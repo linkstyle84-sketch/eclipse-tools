@@ -28,8 +28,57 @@
       font-family: "Noto Sans KR", sans-serif;
     }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 14px 72px; }
-    h1 { margin: 0 0 8px; font-size: 22px; color: #fffdf6; }
+    header { text-align: center; padding: 0 0 2px; }
+    .banner-row {
+      display: grid;
+      grid-template-columns: 1fr 27%;
+      align-items: stretch;
+      width: 100%;
+      margin: 12px 0 14px;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0a1220;
+    }
+    .banner-row img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      object-position: center center;
+    }
+    .member-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 10px;
+      text-decoration: none;
+      text-align: center;
+      color: #f6ebd4;
+      background: linear-gradient(#6b3f24, #3d2416);
+      border-left: 2px solid #2a160e;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .member-cta:hover { filter: brightness(1.08); }
+    .member-cta strong { font-size: clamp(13px, 2.2vw, 18px); }
+    .member-cta span { font-size: clamp(11px, 1.7vw, 14px); color: #f0d2a8; }
+    h1 {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      color: #fffdf6;
+      background: #100c08;
+      border: 3px solid #f3d56a;
+      border-radius: 16px;
+      box-shadow: 0 8px 0 #6a4a0e, 0 14px 28px rgba(0,0,0,.4);
+      text-align: left;
+    }
+    .title-art { display: block; width: 100%; height: auto; }
     .lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    footer { margin-top: 18px; color: #8a7d62; font-size: 12px; text-align: center; }
     .panel {
       background: var(--card);
       border: 1px solid var(--line);
@@ -968,6 +1017,9 @@
     .fx li.t-1 .tier { color: var(--gold); }
     .fx li.t-2 .tier { color: var(--rare); }
     @media (max-width: 800px) {
+      .banner-row { grid-template-columns: 1fr; }
+      .banner-row img { width: 100%; height: auto; }
+      .member-cta { padding: 12px 10px; border-left: 0; border-top: 2px solid #2a160e; }
       .cols, .score { grid-template-columns: 1fr 1fr; }
       .cols { grid-template-columns: 1fr; }
       .cmp-grid { grid-template-columns: 1fr; }
@@ -982,7 +1034,18 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>결속 조합</h1>
+    <header>
+      <h1>
+        <img src="eclipse-header.png?v=102" alt="이클립스 결속" class="title-art">
+      </h1>
+      <div class="banner-row">
+        <img src="banner.png" alt="도건유튜브">
+        <a class="member-cta" href="https://www.youtube.com/channel/UCk6f0jViRYWOi5BcHaDLZXQ/join" target="_blank" rel="noopener">
+          <strong>도건형 커피값 투척</strong>
+          <span>+멤버쉽가입 여기클릭</span>
+        </a>
+      </div>
+    </header>
     <p class="lead">성물을 고르고 레벨을 맞추면 슬롯이 열립니다. 등급을 켠 뒤 열린 칸에 초상화가 들어갑니다. 카드를 누르면 등록하거나 제외할 수 있습니다.</p>
 
     <div class="panel">
@@ -996,6 +1059,7 @@
     </div>
 
     <div class="panel" id="result"></div>
+    <footer>제작: 소장 도건 · 도건유튜브 · 게임연구소</footer>
   </div>
   <div class="cmp-overlay" id="set-prompt">
     <div class="set-prompt-box" role="dialog" aria-modal="true" aria-labelledby="set-prompt-title">
@@ -1041,7 +1105,7 @@
       <div class="book-grid" id="card-book-grid"></div>
     </div>
   </div>
-  <script src="data.js?v=100"></script>
-  <script src="app.js?v=100"></script>
+  <script src="data.js?v=101"></script>
+  <script src="app.js?v=101"></script>
 </body>
 </html>
