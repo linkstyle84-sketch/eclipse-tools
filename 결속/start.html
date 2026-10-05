@@ -34,9 +34,12 @@
     header { text-align: center; margin-bottom: 18px; }
     .title-art {
       display: block;
-      width: min(420px, 100%);
+      width: 100%;
       height: auto;
-      margin: 0 auto 10px;
+      margin: 0 0 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #100c08;
     }
     h1 {
       margin: 0 0 8px;
@@ -137,9 +140,9 @@
     </div>
     <p class="note">유튜브 링크는 영문 주소를 사용해 주세요.<br>https://linkstyle84-sketch.github.io/eclipse-tools/bind/</p>
     <script>
-      // 한글 경로 404 방지: 영문 게이트로 안내
-      if (location.pathname.indexOf("/bind/") === -1) {
-        location.replace("../bind/");
+      // GitHub Pages 한글 경로 404 방지 (로컬 미리보기는 그대로 유지)
+      if (location.hostname.endsWith("github.io") && location.pathname.indexOf("/bind/") === -1) {
+        location.replace("/eclipse-tools/bind/");
       }
     </script>
   </div>
