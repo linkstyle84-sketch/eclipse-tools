@@ -204,7 +204,17 @@
       if (spec.extras.some((name) => ((totals.get(name) || {}).value || 0) > 0)) core += TIER_W[1] * 0.5;
     }
     // util은 전투 핵심(core)보다 항상 아래 밴드
-    return (core * 1000000 + util) * 1000 + sumSelected(pts);
+    // 동점 시 주력 강화 등급(예: 희귀 5강) 포인트가 높은 쪽을 택함
+    let mainTip = 0;
+    let mainE = -1;
+    for (const g of selectedGrades()) {
+      const e = enhanceOf(g);
+      if (e > mainE) {
+        mainE = e;
+        mainTip = pts[g] || 0;
+      }
+    }
+    return (core * 1000000 + util) * 1000 + sumSelected(pts) + mainTip * 0.001;
   }
 
   function enhanceOf(grade) {
@@ -479,7 +489,20 @@
     const pts = emptyPts();
     addPts(pts, comboPts(card.grade, false));
     pts[card.grade] += enhanceOf(card.grade);
-    return sumSelected(pts);
+    let v = sumSelected(pts);
+    // 강화가 가장 높은 등급 트랙에 점수를 넣는 한장을 미세하게 우대
+    // (예: 영웅 한장의 희귀+3 > 동점인 전설 한장)
+    let mainG = null;
+    let mainE = -1;
+    for (const g of selectedGrades()) {
+      const e = enhanceOf(g);
+      if (e > mainE) {
+        mainE = e;
+        mainG = g;
+      }
+    }
+    if (mainG) v += (pts[mainG] || 0) * 0.01;
+    return v;
   }
 
   function evaluate(names, cards, pairs, hanjangByName, mins) {
@@ -550,11 +573,31 @@
     const pool = allowed
       .filter((c) => !used.has(c.name) && !blocked.has(c.name))
       .slice()
-      .sort((a, b) => hanjangValue(b) - hanjangValue(a) || a.name.localeCompare(b.name, "ko"));
+      .sort(
+        (a, b) =>
+          hanjangValue(b) - hanjangValue(a) ||
+          // 동점이면 슬롯 최소등급에 가까운 쪽(영웅 칸→영웅, 전설 아낌)
+          a.rank - b.rank ||
+          a.name.localeCompare(b.name, "ko")
+      );
     for (const min of leftover) {
-      const i = pool.findIndex((c) => c.rank >= min);
-      if (i < 0) continue;
-      const c = pool.splice(i, 1)[0];
+      let bestI = -1;
+      for (let i = 0; i < pool.length; i++) {
+        const c = pool[i];
+        if (c.rank < min) continue;
+        if (bestI < 0) {
+          bestI = i;
+          continue;
+        }
+        const best = pool[bestI];
+        const dv = hanjangValue(c) - hanjangValue(best);
+        // 같은 값이면 min 이상 중 등급이 낮은 카드 우선 (Lv.15 영웅칸 → 영웅 한장)
+        if (dv > 0 || (dv === 0 && (c.rank < best.rank || (c.rank === best.rank && c.name.localeCompare(best.name, "ko") < 0)))) {
+          bestI = i;
+        }
+      }
+      if (bestI < 0) continue;
+      const c = pool.splice(bestI, 1)[0];
       added.push(c.name);
       used.add(c.name);
     }
