@@ -75,23 +75,42 @@
     }
     .actions {
       display: grid;
-      gap: 10px;
-      margin-top: 22px;
+      gap: 12px;
+      margin-top: 24px;
     }
     .cta {
       display: block;
-      padding: 16px 18px;
-      border-radius: 14px;
-      border: 1px solid #f3d56a;
-      background: linear-gradient(180deg, #2a2014, #1a140e);
-      color: #fff8d6;
+      padding: 20px 22px;
+      border-radius: 16px;
+      border: 2px solid #ffe08a;
+      background: linear-gradient(180deg, #f3d56a 0%, #d4a93a 100%);
+      color: #1a1208;
       text-align: center;
       text-decoration: none;
-      font-size: 16px;
+      font-size: 20px;
       font-weight: 900;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.03em;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, .35),
+        0 10px 28px rgba(243, 213, 106, .35),
+        0 0 40px rgba(243, 213, 106, .18);
+      animation: cta-pulse 1.8s ease-in-out infinite;
     }
-    .cta:hover { filter: brightness(1.08); }
+    .cta:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+    .cta small {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      opacity: .78;
+    }
+    @keyframes cta-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 10px 28px rgba(243,213,106,.35), 0 0 40px rgba(243,213,106,.18); }
+      50% { box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 12px 34px rgba(243,213,106,.5), 0 0 56px rgba(243,213,106,.32); }
+    }
     .sub {
       display: block;
       padding: 12px 14px;
@@ -135,16 +154,30 @@
     </div>
 
     <div class="actions">
-      <a class="cta" href="Index.html">결속 도구 사용하기</a>
-      <a class="sub" href="https://www.youtube.com/watch?v=KsAZsT1QYx8" target="_blank" rel="noopener">유튜브에서 영상 보기</a>
+      <a class="cta" id="open-tool" href="Index.html">
+        결속 도구 사용하기
+        <small>클릭 시 유튜브 영상도 함께 열립니다</small>
+      </a>
+      <a class="sub" href="https://www.youtube.com/watch?v=KsAZsT1QYx8" target="_blank" rel="noopener">유튜브에서 영상만 보기</a>
     </div>
     <p class="note">유튜브 링크는 영문 주소를 사용해 주세요.<br>https://linkstyle84-sketch.github.io/eclipse-tools/bind/</p>
-    <script>
-      // GitHub Pages 한글 경로 404 방지 (로컬 미리보기는 그대로 유지)
+  </div>
+  <script>
+    (function () {
       if (location.hostname.endsWith("github.io") && location.pathname.indexOf("/bind/") === -1) {
         location.replace("/eclipse-tools/bind/");
+        return;
       }
-    </script>
-  </div>
+      var btn = document.getElementById("open-tool");
+      if (!btn) return;
+      var yt = "https://www.youtube.com/watch?v=KsAZsT1QYx8";
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        var tool = btn.getAttribute("href");
+        window.open(yt, "_blank", "noopener");
+        location.href = tool;
+      });
+    })();
+  </script>
 </body>
 </html>

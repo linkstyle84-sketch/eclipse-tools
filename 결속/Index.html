@@ -27,7 +27,7 @@
       color: var(--ink);
       font-family: "Noto Sans KR", sans-serif;
     }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 14px 72px; }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 20px 16px 72px; }
     header { text-align: center; padding: 0 0 2px; }
     .banner-row {
       display: grid;
@@ -77,7 +77,7 @@
       text-align: left;
     }
     .title-art { display: block; width: 100%; height: auto; }
-    .lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .lead { margin: 0 0 18px; color: var(--muted); font-size: 15px; line-height: 1.55; }
     footer { margin-top: 18px; color: #8a7d62; font-size: 12px; text-align: center; }
     .panel {
       background: var(--card);
@@ -98,9 +98,9 @@
     .grade-note {
       margin: 0;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .grade-note.load-ok {
       margin-top: 6px;
@@ -117,7 +117,7 @@
     }
     .prefs-xfer-label {
       color: #fffdf6;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 800;
       white-space: nowrap;
     }
@@ -186,9 +186,9 @@
       background: linear-gradient(180deg, #1c160e, #120e0a);
       color: #f3d56a;
       border-radius: 10px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       font-weight: 800;
-      font-size: 12px;
+      font-size: 14px;
       cursor: pointer;
       font-family: inherit;
       white-space: nowrap;
@@ -265,8 +265,8 @@
     .grow.g-4 { border-color: rgba(192, 132, 252, .42); background: linear-gradient(180deg, rgba(192, 132, 252, .1), #120e0a 46%); }
     .grade-btn {
       position: relative;
-      width: 104px;
-      height: 150px;
+      width: 118px;
+      height: 170px;
       flex: none;
       padding: 0;
       border: 0;
@@ -277,8 +277,8 @@
     }
     .grade-btn img {
       display: block;
-      width: 104px;
-      height: 150px;
+      width: 118px;
+      height: 170px;
       object-fit: contain;
       object-position: center;
       pointer-events: none;
@@ -288,12 +288,12 @@
       left: 51%;
       top: 37.5%;
       transform: translate(-50%, -50%);
-      width: 64px;
-      height: 42px;
+      width: 72px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
+      font-size: 32px;
       font-weight: 900;
       line-height: 1;
       letter-spacing: 0;
@@ -313,7 +313,7 @@
       gap: 4px;
     }
     .g-own {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       line-height: 1.2;
       color: var(--muted);
@@ -325,13 +325,13 @@
     .grow.g-4 .g-own { color: #d9b0ff; }
     .g-enh { display: flex; flex-direction: column; gap: 4px; }
     .g-enh button {
-      min-width: 46px;
-      padding: 6px 8px;
+      min-width: 52px;
+      padding: 8px 10px;
       border-radius: 8px;
       border: 1px solid var(--line);
       background: #0c0a08;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       font-family: inherit;
@@ -344,13 +344,13 @@
       gap: 8px;
       width: 100%;
       margin-top: 12px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       border-radius: 12px;
       border: 1px solid #5a4a2a;
       background: linear-gradient(180deg, #1c160e, #120e0a);
       color: #f3d56a;
       font-family: inherit;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 800;
       cursor: pointer;
     }
@@ -449,7 +449,7 @@
       gap: 8px;
       align-items: start;
       padding: 5px 4px 5px 0;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       line-height: 1.35;
       color: #fffdf6;
@@ -489,6 +489,11 @@
       aspect-ratio: 1024 / 730;
       background: #0a0806;
       overflow: hidden;
+      container-type: inline-size;
+      container-name: board;
+      --slot: clamp(78px, 9.4cqi, 118px);
+      --slot-box: clamp(72px, 8.8cqi, 110px);
+      --board-fs: clamp(12px, 1.55cqi, 17px);
     }
     .board-bg {
       position: absolute;
@@ -548,7 +553,7 @@
     .board-title small {
       display: block;
       color: var(--gold);
-      font-size: 13px;
+      font-size: clamp(14px, 1.7cqi, 20px);
       font-weight: 700;
       letter-spacing: .16em;
     }
@@ -613,7 +618,7 @@
       width: 5.4em;
       flex: none;
       color: #f3d56a;
-      font-size: 26px;
+      font-size: clamp(24px, 3.1cqi, 34px);
       font-weight: 800;
       letter-spacing: .06em;
       line-height: 1.1;
@@ -634,14 +639,14 @@
     .board-modes .enh {
       appearance: none;
       -webkit-appearance: none;
-      padding: 12px 14px 13px;
-      min-width: 74px;
-      min-height: 44px;
+      padding: 14px 16px 15px;
+      min-width: clamp(78px, 9.5cqi, 104px);
+      min-height: clamp(48px, 5.8cqi, 62px);
       border: 0;
       border-radius: 0;
       background: transparent url("btn/set-off.png?v=81") center / 100% 100% no-repeat;
       color: #d7c7a4;
-      font-size: 12px;
+      font-size: clamp(13px, 1.55cqi, 17px);
       font-weight: 800;
       box-shadow: none;
       text-shadow: 0 1px 2px rgba(0,0,0,.92);
@@ -660,8 +665,8 @@
       z-index: 6;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      width: 228px;
+      gap: 8px;
+      width: clamp(240px, 28cqi, 300px);
       pointer-events: auto;
     }
     .board-set-note {
@@ -669,7 +674,7 @@
       margin: 2px 0 0;
       text-align: left;
       color: var(--muted);
-      font-size: 10px;
+      font-size: clamp(11px, 1.25cqi, 14px);
       font-weight: 700;
       line-height: 1.35;
       white-space: nowrap;
@@ -678,13 +683,13 @@
     .set-btn {
       appearance: none;
       -webkit-appearance: none;
-      padding: 12px 10px 13px;
-      min-height: 44px;
+      padding: 14px 12px 15px;
+      min-height: clamp(48px, 5.8cqi, 62px);
       border: 0;
       border-radius: 0;
       background: transparent url("btn/set-off.png?v=81") center / 100% 100% no-repeat;
       color: #d7c7a4;
-      font-size: 11px;
+      font-size: clamp(12px, 1.45cqi, 16px);
       font-weight: 800;
       font-family: inherit;
       cursor: pointer;
@@ -712,7 +717,7 @@
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      width: min(720px, 100%);
+      width: min(860px, 100%);
       justify-self: center;
       align-self: center;
       padding: 2px 0 4px;
@@ -720,7 +725,7 @@
     .board-pick-btns {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      gap: 10px;
       width: 100%;
     }
     .board-pick-note {
@@ -728,7 +733,7 @@
       width: 100%;
       text-align: center;
       color: var(--muted);
-      font-size: 11px;
+      font-size: clamp(12px, 1.35cqi, 15px);
       font-weight: 700;
       line-height: 1.45;
       pointer-events: none;
@@ -738,14 +743,14 @@
       -webkit-appearance: none;
       width: 100%;
       text-align: center;
-      padding: 12px 16px 13px;
-      min-height: 48px;
+      padding: 14px 16px 15px;
+      min-height: clamp(52px, 6.2cqi, 66px);
       border: 0;
       border-radius: 0;
       outline: none;
       background: transparent url("btn/relic-off.png?v=79") center / 100% 100% no-repeat;
       color: #d7c7a4;
-      font-size: 13px;
+      font-size: clamp(14px, 1.7cqi, 18px);
       font-weight: 800;
       line-height: 1.3;
       white-space: nowrap;
@@ -772,12 +777,12 @@
       color: #fff8d6;
       text-shadow: 0 0 10px rgba(243, 213, 106, .55), 0 1px 2px rgba(0,0,0,.9);
     }
-    .cluster.rare-l { grid-area: rare-l; align-self: center; justify-self: center; display: grid; grid-template-columns: 78px 78px; gap: 18px 18px; margin-top: -6%; }
+    .cluster.rare-l { grid-area: rare-l; align-self: center; justify-self: center; display: grid; grid-template-columns: var(--slot) var(--slot); gap: clamp(14px, 2.1cqi, 24px); margin-top: -6%; }
     .board-art-space { grid-area: art; position: relative; align-self: stretch; justify-self: stretch; min-width: 0; overflow: visible; }
-    .cluster.rare-r { grid-area: rare-r; align-self: center; justify-self: center; display: grid; grid-template-columns: 78px 78px; gap: 18px 18px; margin-top: -6%; }
-    .cluster.hero-l { grid-area: hero-l; display: flex; justify-content: center; gap: 14px; margin-bottom: 2%; }
+    .cluster.rare-r { grid-area: rare-r; align-self: center; justify-self: center; display: grid; grid-template-columns: var(--slot) var(--slot); gap: clamp(14px, 2.1cqi, 24px); margin-top: -6%; }
+    .cluster.hero-l { grid-area: hero-l; display: flex; justify-content: center; gap: clamp(12px, 1.8cqi, 20px); margin-bottom: 2%; }
     .cluster.legend { grid-area: legend; display: flex; justify-content: center; margin-bottom: 2%; }
-    .cluster.hero-r { grid-area: hero-r; display: flex; justify-content: center; gap: 14px; margin-bottom: 2%; }
+    .cluster.hero-r { grid-area: hero-r; display: flex; justify-content: center; gap: clamp(12px, 1.8cqi, 20px); margin-bottom: 2%; }
     .board-actions {
       position: absolute;
       right: 3.2%;
@@ -790,8 +795,8 @@
       max-width: 42%;
     }
     .board-actions .ghost {
-      font-size: 12px;
-      padding: 7px 10px;
+      font-size: clamp(13px, 1.45cqi, 16px);
+      padding: 10px 14px;
       white-space: nowrap;
     }
     #deck-export,
@@ -862,7 +867,7 @@
       margin: 0;
       max-width: 58%;
       color: var(--muted);
-      font-size: 11px;
+      font-size: clamp(12px, 1.35cqi, 15px);
       font-weight: 700;
       line-height: 1.55;
       pointer-events: none;
@@ -871,8 +876,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      width: 78px;
+      gap: 5px;
+      width: var(--slot);
       padding: 0;
       border: 0;
       background: transparent;
@@ -887,20 +892,20 @@
       left: 4px;
       top: 4px;
       z-index: 1;
-      padding: 1px 5px;
+      padding: 2px 6px;
       border-radius: 6px;
       background: rgba(12, 10, 8, .78);
       border: 1px solid rgba(228, 195, 106, .55);
       color: var(--gold);
-      font-size: 9px;
+      font-size: clamp(10px, 1.15cqi, 13px);
       font-weight: 800;
       font-style: normal;
       line-height: 1.3;
     }
     .bslot-box {
       position: relative;
-      width: 72px;
-      height: 72px;
+      width: var(--slot-box);
+      height: var(--slot-box);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -910,15 +915,15 @@
       overflow: hidden;
     }
     .bslot .plus {
-      font-size: 40px;
+      font-size: clamp(34px, 4.6cqi, 52px);
       font-weight: 300;
       color: #8a847c;
       line-height: 1;
       transform: translateY(-2px);
     }
     .bslot .lock-ico {
-      width: 26px;
-      height: 26px;
+      width: clamp(24px, 3.1cqi, 34px);
+      height: clamp(24px, 3.1cqi, 34px);
       margin-top: -10px;
       opacity: .9;
     }
@@ -929,7 +934,7 @@
       bottom: 8px;
       text-align: center;
       color: #e24b4b;
-      font-size: 12px;
+      font-size: clamp(12px, 1.45cqi, 16px);
       font-weight: 800;
       letter-spacing: .02em;
     }
@@ -941,9 +946,9 @@
       display: block;
     }
     .bslot-need {
-      width: 78px;
-      max-width: 78px;
-      font-size: 11px;
+      width: var(--slot);
+      max-width: var(--slot);
+      font-size: var(--board-fs);
       font-weight: 800;
       text-align: center;
       white-space: nowrap;
@@ -961,7 +966,7 @@
     .bslot-need .enh-mark {
       flex: none;
       font-style: normal;
-      font-size: 10px;
+      font-size: clamp(11px, 1.3cqi, 14px);
       font-weight: 900;
       color: #f3d56a;
       text-shadow: 0 0 8px rgba(243, 213, 106, .35);
@@ -1603,8 +1608,14 @@
       .grade-fx { grid-template-columns: 1fr 1fr; }
       .grade-fx-list { max-height: 220px; }
       .board-pick-btns { grid-template-columns: 1fr 1fr; }
-      .bslot-box { width: 52px; height: 52px; }
-      .bslot .plus { font-size: 30px; }
+      .relic-board {
+        --slot: 64px;
+        --slot-box: 56px;
+        --board-fs: 11px;
+      }
+      .grade-btn,
+      .grade-btn img { width: 96px; height: 138px; }
+      .grade-btn .gpts { font-size: 26px; width: 58px; height: 38px; }
       .lv-num { font-size: 20px; width: 5.4em; }
       .lv-rule { width: 18px; }
     }
@@ -1807,7 +1818,7 @@
       <strong>결속 효과 최적화중</strong><span class="opt-loading-dots" id="opt-loading-dots">.</span>
     </div>
   </div>
-  <script src="data.js?v=139"></script>
-  <script src="app.js?v=139"></script>
+  <script src="data.js?v=140"></script>
+  <script src="app.js?v=140"></script>
 </body>
 </html>
