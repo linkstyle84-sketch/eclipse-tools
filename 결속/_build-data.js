@@ -46,7 +46,8 @@ function parseHanjang(file, grade) {
       continue;
     }
     if (pending) {
-      const k = line.match(/^종류:\s*(초월|무기외형)\b/);
+      // JS \b는 한글에서 경계로 안 잡혀서 (?:\s|/|$) 사용
+      const k = line.match(/^종류:\s*(초월|무기외형)(?:\s|\/|$)/);
       if (k) pending.kind = k[1];
     }
   }

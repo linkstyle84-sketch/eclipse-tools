@@ -30,6 +30,7 @@
     relic: "초월",
     level: 1,
     slots: 2,
+    relicLevels: { 초월: 1, 외형: 1, 황금: 1, 경험: 1 },
     grades: { 희귀: false, 영웅: false, 전설: false, 신화: false },
     enhance: 0,
     gradeEnhance: { 희귀: 0, 영웅: 0, 전설: 0, 신화: 0 },
@@ -45,6 +46,13 @@
   let choiceName = null;
   let choiceSlot = null;
   let bookGrade = "희귀";
+  let gradeFxOpen = false;
+  let savedScrollY = null;
+  let quietDrawTimer = null;
+  let ownGrade = null;
+  let ownDirty = false;
+  const STORAGE_KEY = "eclipse-bind-prefs-v1";
+  let saveTimer = null;
 
   const ENH_OPTS = [0, 1, 3, 5];
 
@@ -68,15 +76,50 @@
     경험: { hits: ["일반 공격 회피", "스킬 회피"], extras: ["경험치 획득량 증가"] },
   };
 
+  // 전투 핵심(피해감소·무시·공격/방어)보다 수치와 무관하게 항상 후순위인 스탯
+  const LOW_BAND = {
+    초월: new Set(["공격 속도", "글로벌 쿨타임 감소", "물약 최대 소지량"]),
+    외형: new Set(["시전 속도", "물약 회복률", "글로벌 쿨타임 감소"]),
+  };
+
   function focusOf(relic) {
     return FOCUS[relic] || null;
   }
 
-  function amountWeight(parsed) {
+  function amountWeight(parsed, relic) {
     const v = Number(parsed.value) || 1;
-    if (parsed.unit === "%") return v * 100;
+    if (parsed.unit === "%") {
+      // 골드·경험치 %는 상위 전투 스탯을 역전하지 않도록 약하게
+      if (relic === "황금" && parsed.name === "골드 획득량 증가") return v * 10;
+      if (relic === "경험" && parsed.name === "경험치 획득량 증가") return v * 10;
+      return v * 100;
+    }
     if (parsed.unit === "초") return v * 1000;
     return v;
+  }
+
+  function isLowBandStat(relic, name) {
+    const set = LOW_BAND[relic];
+    return !!(set && set.has(name));
+  }
+
+  // 피해감소/무시 1 > 공격·방어 6 이 되도록 2순위 전투 스탯 가중치 조정
+  function tierLineWeight(relic, name, tier) {
+    let w = TIER_W[tier] || 0;
+    if (!w) return 0;
+    if (relic === "외형" && (name === "PvE 공격력" || name === "PvP 공격력")) {
+      // tier3*6 < TIER_W[2](스킬 피해 감소), tier4는 그보다 낮게
+      return tier <= 3 ? 3000 : 2500;
+    }
+    if (relic === "황금" && name === "골드 획득량 증가") {
+      // PvE 피해감소(4000) 아래, PvP 피해감소(160) 위
+      return 600;
+    }
+    if (relic === "경험" && name === "경험치 획득량 증가") {
+      // 회피(2티어) 아래, 피해 감소 무시(4·5티어) 위 — PVE 3순위용
+      return 2500;
+    }
+    return w;
   }
 
   function focusHitCoverage(pts, relic) {
@@ -130,31 +173,38 @@
   }
 
   function effectValue(pts, relic, names, cards) {
-    let v = 0;
+    let core = 0;
+    let util = 0;
     relic = relic || state.relic;
     const tracks = BIND_DATA.effects[relic] || {};
     const spec = focusOf(relic);
+    // 등급별 줄을 합산한 뒤 점수화 — 화면의 결속 효과 총합과 같은 기준
+    const totals = new Map();
     for (const g of selectedGrades()) {
-      const seenHit = {};
       for (const e of tracks[g] || []) {
         if (pts[g] < e.at) continue;
         const parsed = parseEffectNum(e.text);
-        const t = tierOfStat(parsed.name, relic);
-        let w = TIER_W[t] || 0;
-        if (!w) continue;
-        if (spec && spec.hits.includes(parsed.name)) {
-          if (seenHit[parsed.name]) w = TIER_W[4] || w;
-          else seenHit[parsed.name] = true;
-        }
-        v += spec ? w * amountWeight(parsed) : w;
+        const cur = totals.get(parsed.name) || { name: parsed.name, value: 0, unit: parsed.unit || "" };
+        cur.value += Number(parsed.value) || 0;
+        if (parsed.unit) cur.unit = parsed.unit;
+        totals.set(parsed.name, cur);
       }
     }
-    if (spec) {
-      v += focusHitCoverage(pts, relic) * TIER_W[1] * 40;
-      v += focusExtraCoverage(pts, relic) * TIER_W[1] * 8;
-      v += focusOwnTrackBonus(names, cards);
+    for (const parsed of totals.values()) {
+      const t = tierOfStat(parsed.name, relic);
+      const w = tierLineWeight(relic, parsed.name, t);
+      if (!w) continue;
+      const line = spec ? w * amountWeight(parsed, relic) : w;
+      if (spec && isLowBandStat(relic, parsed.name)) util += line;
+      else core += line;
     }
-    return v * 1000 + sumSelected(pts);
+    if (spec) {
+      // 1·2티어가 한 번이라도 켜지면 약한 보너스만 (등급 수만큼 중복 가산하지 않음)
+      if (spec.hits.every((name) => ((totals.get(name) || {}).value || 0) > 0)) core += TIER_W[1] * 2;
+      if (spec.extras.some((name) => ((totals.get(name) || {}).value || 0) > 0)) core += TIER_W[1] * 0.5;
+    }
+    // util은 전투 핵심(core)보다 항상 아래 밴드
+    return (core * 1000000 + util) * 1000 + sumSelected(pts);
   }
 
   function enhanceOf(grade) {
@@ -177,20 +227,40 @@
     return SLOT_DEFS.filter((s) => s.unlock <= lv).length;
   }
 
-  function setRelicLevel(n) {
+  function levelOf(relic) {
+    relic = relic || state.relic;
+    const n = Number(state.relicLevels[relic]);
+    return RELIC_LEVELS.includes(n) ? n : 1;
+  }
+
+  function slotsOf(relic) {
+    return slotsFromLevel(levelOf(relic));
+  }
+
+  function syncCurrentLevel() {
+    state.level = levelOf(state.relic);
+    state.slots = slotsOf(state.relic);
+  }
+
+  function setRelicLevel(n, relic) {
+    relic = relic || state.relic;
     n = Number(n);
     if (!RELIC_LEVELS.includes(n)) {
       n = RELIC_LEVELS.reduce((best, lv) => (Math.abs(lv - n) < Math.abs(best - n) ? lv : best), 1);
     }
-    state.level = n;
-    state.slots = slotsFromLevel(n);
+    if (!state.relicLevels) state.relicLevels = { 초월: 1, 외형: 1, 황금: 1, 경험: 1 };
+    state.relicLevels[relic] = n;
+    if (relic === state.relic) {
+      state.level = n;
+      state.slots = slotsFromLevel(n);
+    }
   }
 
   function stepRelicLevel(dir) {
-    const i = RELIC_LEVELS.indexOf(state.level);
+    const i = RELIC_LEVELS.indexOf(levelOf(state.relic));
     const next = RELIC_LEVELS[i + dir];
     if (next == null) return;
-    setRelicLevel(next);
+    setRelicLevel(next, state.relic);
   }
 
   function slotMins(n) {
@@ -208,13 +278,14 @@
 
   function assignSlots(names, cards, relic) {
     relic = relic || state.relic;
+    const level = levelOf(relic);
     const slots = SLOT_DEFS.map((d) => ({ ...d, card: null }));
     const taken = new Array(slots.length).fill(false);
     const placed = new Set();
     const pins = state.pinned[relic] || [];
     for (let i = 0; i < slots.length; i++) {
       const n = pins[i];
-      if (!n || slots[i].unlock > state.level) continue;
+      if (!n || slots[i].unlock > level) continue;
       const c = cards.get(n);
       if (!c || c.rank < slots[i].min) continue;
       slots[i].card = c;
@@ -225,7 +296,7 @@
     for (const c of used) {
       let pick = -1;
       for (let i = 0; i < slots.length; i++) {
-        if (taken[i] || slots[i].unlock > state.level || c.rank < slots[i].min) continue;
+        if (taken[i] || slots[i].unlock > level || c.rank < slots[i].min) continue;
         if (pick < 0 || slots[i].min > slots[pick].min) pick = i;
       }
       if (pick >= 0) {
@@ -238,13 +309,14 @@
 
   function pinnedNames(relic) {
     relic = relic || state.relic;
+    const level = levelOf(relic);
     const cards = cardIndex();
     const out = [];
     const seen = new Set();
     (state.pinned[relic] || []).forEach((n, i) => {
       if (!n || seen.has(n)) return;
       const c = cards.get(n);
-      if (!c || SLOT_DEFS[i].unlock > state.level || c.rank < SLOT_DEFS[i].min) return;
+      if (!c || SLOT_DEFS[i].unlock > level || c.rank < SLOT_DEFS[i].min) return;
       seen.add(n);
       out.push(n);
     });
@@ -521,7 +593,7 @@
     relic = relic || state.relic;
     const blocked = blockedNames(relic);
     const cards = cardIndex();
-    const mins = slotMins(state.slots);
+    const mins = slotMins(slotsOf(relic));
     const want = new Set(selectedGrades());
     if (!want.size) return null;
     const locked = pinnedNames(relic);
@@ -629,8 +701,8 @@
     relic = relic || state.relic;
     return {
       relic,
-      level: state.level,
-      slots: state.slots,
+      level: levelOf(relic),
+      slots: slotsOf(relic),
       mode: state.mode,
       grades: Object.assign({}, state.grades),
       gradeEnhance: Object.assign({}, state.gradeEnhance),
@@ -747,7 +819,7 @@
   }
 
   function anyOverlayOpen() {
-    return ["set-prompt", "cmp-overlay", "card-choice", "card-book"].some((id) => {
+    return ["set-prompt", "cmp-overlay", "card-choice", "card-book", "card-own", "save-notice", "prefs-import", "prefs-import-done"].some((id) => {
       const n = el(id);
       return n && n.classList.contains("show");
     });
@@ -764,6 +836,7 @@
 
   function unlockPage() {
     if (anyOverlayOpen()) return;
+    if (document.body.dataset.scrollLock !== "1") return;
     const y = Number(document.body.dataset.scrollY || 0);
     delete document.body.dataset.scrollLock;
     delete document.body.dataset.scrollY;
@@ -1157,7 +1230,8 @@
     const cards = cardIndex();
     const names = lastCapture ? lastCapture.names : [];
     const placed = assignSlots(names, cards);
-    if (choiceSlot != null && card.rank >= SLOT_DEFS[choiceSlot].min && SLOT_DEFS[choiceSlot].unlock <= state.level) {
+    const level = levelOf(state.relic);
+    if (choiceSlot != null && card.rank >= SLOT_DEFS[choiceSlot].min && SLOT_DEFS[choiceSlot].unlock <= level) {
       return choiceSlot;
     }
     if (choiceName) {
@@ -1166,12 +1240,12 @@
     }
     for (let i = 0; i < SLOT_DEFS.length; i++) {
       const d = SLOT_DEFS[i];
-      if (d.unlock > state.level || card.rank < d.min) continue;
+      if (d.unlock > level || card.rank < d.min) continue;
       if (!placed[i].card) return i;
     }
     for (let i = SLOT_DEFS.length - 1; i >= 0; i--) {
       const d = SLOT_DEFS[i];
-      if (d.unlock > state.level || card.rank < d.min) continue;
+      if (d.unlock > level || card.rank < d.min) continue;
       return i;
     }
     return null;
@@ -1184,7 +1258,7 @@
     if (takenRelicOf(name)) return;
     const slot = firstSlotFor(card);
     if (slot == null) return;
-    if (card.rank < SLOT_DEFS[slot].min || SLOT_DEFS[slot].unlock > state.level) return;
+    if (card.rank < SLOT_DEFS[slot].min || SLOT_DEFS[slot].unlock > levelOf(state.relic)) return;
     state.excluded.delete(name);
     state.grades[card.grade] = true;
     state.relicEnabled[state.relic] = true;
@@ -1205,6 +1279,298 @@
     unlockPage();
   }
 
+  function knownCardNames() {
+    const set = new Set();
+    for (const g of BIND_DATA.grades) {
+      for (const c of BIND_DATA.hanjang[g] || []) set.add(c.name);
+    }
+    return set;
+  }
+
+  function prefsPayload() {
+    const pinned = {};
+    for (const r of RELIC_ORDER) {
+      pinned[r] = (state.pinned[r] || SLOT_DEFS.map(() => null)).map((n) => n || null);
+    }
+    return {
+      v: 1,
+      excluded: [...state.excluded],
+      grades: Object.assign({}, state.grades),
+      gradeEnhance: Object.assign({}, state.gradeEnhance),
+      mode: state.mode,
+      level: state.level,
+      relicLevels: Object.assign({}, state.relicLevels),
+      relic: state.relic,
+      relicEnabled: Object.assign({}, state.relicEnabled),
+      pinned,
+      savedAt: Date.now(),
+    };
+  }
+
+  function encodePrefsCode(data) {
+    const json = JSON.stringify(data || prefsPayload());
+    const b64 = btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+    return "ECLIPSEBIND1." + b64;
+  }
+
+  function decodePrefsCode(code) {
+    const raw = String(code || "").trim().replace(/\s+/g, "");
+    const m = raw.match(/^(?:ECLIPSEBIND1\.)?([A-Za-z0-9\-_]+)$/);
+    if (!m) throw new Error("bad-code");
+    let b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const json = decodeURIComponent(escape(atob(b64)));
+    const data = JSON.parse(json);
+    if (!data || typeof data !== "object") throw new Error("bad-data");
+    return data;
+  }
+
+  function applyPrefsData(data) {
+    if (!data || typeof data !== "object") return false;
+    const known = knownCardNames();
+    if (Array.isArray(data.excluded)) {
+      state.excluded = new Set(data.excluded.filter((n) => known.has(n)));
+    }
+    if (data.grades && typeof data.grades === "object") {
+      for (const g of BIND_DATA.grades) {
+        if (typeof data.grades[g] === "boolean") state.grades[g] = data.grades[g];
+      }
+    }
+    if (data.gradeEnhance && typeof data.gradeEnhance === "object") {
+      for (const g of BIND_DATA.grades) {
+        if (data.gradeEnhance[g] != null) state.gradeEnhance[g] = Number(data.gradeEnhance[g]) || 0;
+      }
+    }
+    if (data.mode === "PVE" || data.mode === "PVP") state.mode = data.mode;
+    if (data.relicLevels && typeof data.relicLevels === "object") {
+      for (const r of RELIC_ORDER) {
+        const lv = Number(data.relicLevels[r]);
+        if (RELIC_LEVELS.indexOf(lv) >= 0) state.relicLevels[r] = lv;
+      }
+    } else if (RELIC_LEVELS.indexOf(Number(data.level)) >= 0) {
+      const lv = Number(data.level);
+      for (const r of RELIC_ORDER) state.relicLevels[r] = lv;
+    }
+    if (RELIC_ORDER.indexOf(data.relic) >= 0) state.relic = data.relic;
+    syncCurrentLevel();
+    if (data.relicEnabled && typeof data.relicEnabled === "object") {
+      for (const r of RELIC_ORDER) {
+        if (typeof data.relicEnabled[r] === "boolean") state.relicEnabled[r] = data.relicEnabled[r];
+      }
+    }
+    if (data.pinned && typeof data.pinned === "object") {
+      for (const r of RELIC_ORDER) {
+        const src = data.pinned[r];
+        if (!Array.isArray(src)) continue;
+        state.pinned[r] = SLOT_DEFS.map((_, i) => {
+          const n = src[i];
+          return n && known.has(n) ? n : null;
+        });
+      }
+    }
+    markDirtyFrom(null);
+    return true;
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsPayload()));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function fillExportCode() {
+    const ta = el("prefs-export-code");
+    if (ta) ta.value = encodePrefsCode(prefsPayload());
+  }
+
+  function ownedCountByGrade() {
+    const out = {};
+    for (const g of BIND_DATA.grades) {
+      const list = BIND_DATA.hanjang[g] || [];
+      out[g] = list.filter((c) => !state.excluded.has(c.name)).length;
+    }
+    return out;
+  }
+
+  function openSaveNotice(ok) {
+    const box = el("save-notice");
+    const msg = el("save-notice-ok");
+    const title = el("save-notice-title");
+    if (title) title.textContent = ok ? "내 카드 목록 내려받기" : "저장 실패";
+    if (msg) {
+      msg.textContent = ok
+        ? "아래 코드로 다른 기기에서도 내 카드를 불러올 수 있습니다."
+        : "저장에 실패했습니다. 시크릿 모드이거나 저장 공간이 부족할 수 있습니다.";
+      msg.style.color = ok ? "#c8f0c8" : "#ff8b8b";
+    }
+    if (ok) fillExportCode();
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function closeSaveNotice() {
+    const box = el("save-notice");
+    if (box) box.classList.remove("show");
+    unlockPage();
+  }
+
+  function openExportPopup() {
+    savePrefs();
+    fillExportCode();
+    const msg = el("save-notice-ok");
+    if (msg) {
+      msg.textContent = "아래 코드를 복사해 다른 기기로 보내세요.";
+      msg.style.color = "#c8f0c8";
+    }
+    const title = el("save-notice-title");
+    if (title) title.textContent = "내 카드 목록 내려받기";
+    const box = el("save-notice");
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function openImportPopup() {
+    const box = el("prefs-import");
+    const ta = el("prefs-import-code");
+    const msg = el("prefs-import-msg");
+    if (ta) ta.value = "";
+    if (msg) {
+      msg.textContent = "다른 기기에서 복사한 코드를 붙여 넣으세요.";
+      msg.style.color = "var(--muted)";
+    }
+    if (box) box.classList.add("show");
+    lockPage();
+    if (ta) setTimeout(() => ta.focus(), 0);
+  }
+
+  function closeImportPopup() {
+    const box = el("prefs-import");
+    if (box) box.classList.remove("show");
+    unlockPage();
+  }
+
+  async function copyExportCode() {
+    const ta = el("prefs-export-code");
+    if (!ta || !ta.value) fillExportCode();
+    const text = (el("prefs-export-code") || {}).value || "";
+    if (!text) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+      }
+      const msg = el("save-notice-ok");
+      if (msg) {
+        msg.textContent = "코드를 복사했습니다. 다른 기기에 붙여 넣으세요.";
+        msg.style.color = "#c8f0c8";
+      }
+    } catch (err) {
+      if (ta) {
+        ta.focus();
+        ta.select();
+      }
+    }
+  }
+
+  function renderImportCounts() {
+    const box = el("prefs-import-counts");
+    if (!box) return;
+    const counts = ownedCountByGrade();
+    box.innerHTML = BIND_DATA.grades
+      .map((g) => {
+        const n = counts[g] || 0;
+        const total = (BIND_DATA.hanjang[g] || []).length;
+        return `<div class="g-${RANK[g]}"><b>${n}</b><span>${g} · 전체 ${total}</span></div>`;
+      })
+      .join("");
+  }
+
+  function openImportDone() {
+    renderImportCounts();
+    const box = el("prefs-import-done");
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function closeImportDone() {
+    const box = el("prefs-import-done");
+    if (box) box.classList.remove("show");
+    unlockPage();
+  }
+
+  function importPrefsFromInput() {
+    const ta = el("prefs-import-code");
+    const msg = el("prefs-import-msg");
+    try {
+      const data = decodePrefsCode(ta ? ta.value : "");
+      if (!applyPrefsData(data)) throw new Error("apply");
+      savePrefs();
+      closeImportPopup();
+      draw();
+      const note = el("grade-note-load");
+      if (note) {
+        note.hidden = false;
+        note.textContent = "코드로 내 카드를 불러왔습니다.";
+      }
+      openImportDone();
+    } catch (err) {
+      if (msg) {
+        msg.textContent = "코드가 올바르지 않습니다. 전체를 다시 복사해 붙여 넣어 주세요.";
+        msg.style.color = "#ff8b8b";
+      }
+    }
+  }
+
+  function savePrefsManual() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    const ok = savePrefs();
+    openSaveNotice(ok);
+  }
+
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      savePrefs();
+    }, 120);
+  }
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      return applyPrefsData(data);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function rememberScroll() {
+    savedScrollY = window.scrollY;
+  }
+
+  function restoreScroll() {
+    if (savedScrollY == null) return;
+    const y = savedScrollY;
+    savedScrollY = null;
+    const apply = () => window.scrollTo(0, y);
+    apply();
+    requestAnimationFrame(apply);
+  }
+
   function excludeCard(name) {
     if (!name) return;
     const from = relicUsingCard(name);
@@ -1217,15 +1583,133 @@
     markDirtyFrom(from);
     closeCardChoice();
     closeCardBook();
-    draw();
+    requestQuietDraw();
+  }
+
+  function includeCard(name) {
+    if (!name) return;
+    state.excluded.delete(name);
+    markDirtyFrom(null);
+    requestQuietDraw();
+  }
+
+  function ownCardsOfGrade(grade) {
+    return (BIND_DATA.hanjang[grade] || []).slice().sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }
+
+  function renderCardOwn() {
+    const body = el("card-own-body");
+    const title = el("card-own-title");
+    if (!body || !ownGrade) return;
+    if (title) title.textContent = ownGrade + " 보유 카드 선택";
+    const list = ownCardsOfGrade(ownGrade);
+    const groups = [
+      { key: "초월", label: "초월", items: list.filter((c) => c.kind !== "무기외형") },
+      { key: "무기외형", label: "무기외형", items: list.filter((c) => c.kind === "무기외형") },
+    ];
+    body.innerHTML = groups
+      .filter((g) => g.items.length)
+      .map((g) => {
+        const cards = g.items
+          .map((c) => {
+            const ex = state.excluded.has(c.name);
+            return `<button type="button" class="own-card g-${RANK[c.grade]}${ex ? " is-ex" : " is-on"}" data-own-toggle="${escapeAttr(
+              c.name
+            )}" title="${escapeAttr(c.name)} · ${ex ? "제외됨 · 누르면 선택" : "선택됨 · 누르면 제외"}">
+              <img src="${portraitSrc(c.name)}" alt="" onerror="this.style.visibility='hidden'">
+              <strong>${escapeHtml(c.name)}</strong>
+              <span class="own-state">${ex ? "제외" : "선택"}</span>
+            </button>`;
+          })
+          .join("");
+        return `<section class="own-sec"><h3>${g.label}<em>${g.items.length}</em></h3><div class="own-grid">${cards}</div></section>`;
+      })
+      .join("");
+  }
+
+  function openCardOwn(grade) {
+    ownGrade = grade;
+    ownDirty = false;
+    renderCardOwn();
+    const box = el("card-own");
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function closeCardOwn(runDraw) {
+    const box = el("card-own");
+    if (box) box.classList.remove("show");
+    unlockPage();
+    const g = ownGrade;
+    ownGrade = null;
+    if (ownDirty || runDraw) {
+      ownDirty = false;
+      markDirtyFrom(null);
+      requestQuietDraw();
+    }
+    return g;
+  }
+
+  function toggleOwnCard(name) {
+    if (!name) return;
+    if (state.excluded.has(name)) state.excluded.delete(name);
+    else state.excluded.add(name);
+    ownDirty = true;
+    scheduleSave();
+    renderCardOwn();
+  }
+
+  function setOwnGradeAll(select) {
+    if (!ownGrade) return;
+    for (const c of ownCardsOfGrade(ownGrade)) {
+      if (select) state.excluded.delete(c.name);
+      else state.excluded.add(c.name);
+    }
+    ownDirty = true;
+    scheduleSave();
+    renderCardOwn();
+  }
+
+  function disableOwnGrade() {
+    if (!ownGrade) return;
+    state.grades[ownGrade] = false;
+    ownDirty = true;
+    closeCardOwn(true);
+  }
+
+  function finishCardOwnAndSave() {
+    closeCardOwn(true);
+    savePrefsManual();
+  }
+
+  function requestQuietDraw() {
+    rememberScroll();
+    scheduleSave();
+    if (quietDrawTimer) clearTimeout(quietDrawTimer);
+    quietDrawTimer = setTimeout(() => {
+      quietDrawTimer = null;
+      draw({ quiet: true });
+    }, 30);
   }
 
   function el(id) {
     return document.getElementById(id);
   }
 
-  function renderControls() {
-    el("grades").innerHTML = BIND_DATA.grades
+  function renderControls(opts) {
+    const quiet = !!(opts && opts.quiet);
+    const box = el("grades");
+    if (quiet && box && box.querySelector(".grade-btn")) {
+      for (const g of BIND_DATA.grades) {
+        const ptsEl = box.querySelector(`[data-grade="${g}"] .gpts`);
+        if (!ptsEl) continue;
+        const on = !!state.grades[g];
+        ptsEl.textContent = on && lastCapture ? lastCapture.pts[g] || 0 : 0;
+      }
+      renderGradeFx();
+      return;
+    }
+    box.innerHTML = BIND_DATA.grades
       .map((g) => {
         const on = !!state.grades[g];
         const pts = on && lastCapture ? lastCapture.pts[g] || 0 : 0;
@@ -1235,7 +1719,7 @@
             `<button type="button" class="${enhanceOf(g) === n ? "on" : ""}" data-g-enh="${g}" data-n="${n}">${n}강</button>`
         ).join("");
         return `<div class="grow g-${RANK[g]}">
-          <button type="button" class="grade-btn g-${RANK[g]}${on ? " on" : ""}" data-grade="${g}" aria-pressed="${on}" aria-label="${g}" title="${g}${on ? " 사용 중" : " 빼기"}">
+          <button type="button" class="grade-btn g-${RANK[g]}${on ? " on" : ""}" data-grade="${g}" aria-pressed="${on}" aria-label="${g}" title="${g}${on ? " 보유 카드 선택" : " 켜고 보유 카드 선택"}">
             <img src="${src}" alt="">
             <b class="gpts" aria-hidden="true">${pts}</b>
           </button>
@@ -1243,10 +1727,73 @@
         </div>`;
       })
       .join("");
+    renderGradeFx();
+  }
+
+  function gradePtsNow(g) {
+    if (!lastCapture || !state.grades[g]) return 0;
+    return lastCapture.pts[g] || 0;
+  }
+
+  function renderGradeFx() {
+    const box = el("grade-fx");
+    const btn = el("grade-fx-toggle");
+    if (!box || !btn) return;
+    const label = btn.querySelector("span");
+    btn.setAttribute("aria-expanded", gradeFxOpen ? "true" : "false");
+    if (label) label.textContent = gradeFxOpen ? "결속 효과 접기" : "결속 효과 보기";
+    box.hidden = !gradeFxOpen;
+    if (!gradeFxOpen) return;
+
+    const scrolls = {};
+    box.querySelectorAll("[data-fx-grade]").forEach((sc) => {
+      scrolls[sc.dataset.fxGrade] = sc.scrollTop;
+    });
+
+    const tracks = (BIND_DATA.effects && BIND_DATA.effects[state.relic]) || {};
+    const hasCards = !!(lastCapture && lastCapture.names && lastCapture.names.length);
+    box.innerHTML = BIND_DATA.grades
+      .map((g) => {
+        const p = gradePtsNow(g);
+        const list = tracks[g] || [];
+        const rows = list.length
+          ? list
+              .map((e) => {
+                const on = p >= e.at;
+                return `<li class="${on ? "on" : "off"}"><i class="fx-at">${e.at}</i><span>${escapeHtml(e.text)}</span></li>`;
+              })
+              .join("")
+          : `<li class="off"><span class="grade-fx-empty">효과 데이터 없음</span></li>`;
+        const note = !hasCards
+          ? `<p class="grade-fx-empty">추천 카드 없음</p>`
+          : !state.grades[g]
+            ? `<p class="grade-fx-empty">등급 꺼짐</p>`
+            : "";
+        return `<div class="grade-fx-col g-${RANK[g]}">
+          <div class="grade-fx-head"><b>${g}</b><em>${p}p</em></div>
+          ${note}
+          <ul class="grade-fx-list" data-fx-grade="${g}">${rows}</ul>
+        </div>`;
+      })
+      .join("");
+
+    box.querySelectorAll("[data-fx-grade]").forEach((sc) => {
+      const g = sc.dataset.fxGrade;
+      if (scrolls[g] != null) {
+        sc.scrollTop = scrolls[g];
+        return;
+      }
+      const p = gradePtsNow(g);
+      const firstOff = sc.querySelector("li.off");
+      if (p > 0 && firstOff) {
+        const top = Math.max(0, firstOff.offsetTop - sc.clientHeight * 0.45);
+        sc.scrollTop = top;
+      }
+    });
   }
 
   function slotCell(def, card, index) {
-    const open = def.unlock <= state.level;
+    const open = def.unlock <= levelOf(state.relic);
     if (!open) {
       return `<div class="bslot g-${def.min} locked">
         <span class="bslot-box">${LOCK_SVG}<span class="blv">Lv.${def.unlock}</span></span>
@@ -1271,14 +1818,36 @@
     </button>`;
   }
 
-  function renderBoard() {
+  function renderBoard(opts) {
     const box = el("relic-board");
     if (!box) return;
+    const quiet = !!(opts && opts.quiet);
     const cards = cardIndex();
     const names = lastCapture ? lastCapture.names : [];
     const placed = assignSlots(names, cards);
     const cluster = (ids) => ids.map((i) => slotCell(SLOT_DEFS[i], placed[i].card, i)).join("");
-    const lvIdx = RELIC_LEVELS.indexOf(state.level);
+    syncCurrentLevel();
+    if (
+      quiet &&
+      box.dataset.relic === state.relic &&
+      box.dataset.level === String(levelOf(state.relic)) &&
+      box.querySelector(".cluster.rare-l")
+    ) {
+      const map = [
+        [".cluster.rare-l", [0, 1, 2, 3]],
+        [".cluster.rare-r", [4, 5, 6, 7]],
+        [".cluster.hero-l", [8, 9, 10]],
+        [".cluster.legend", [14]],
+        [".cluster.hero-r", [11, 12, 13]],
+      ];
+      for (const [sel, ids] of map) {
+        const node = box.querySelector(sel);
+        if (node) node.innerHTML = cluster(ids);
+      }
+      return;
+    }
+    const curLv = levelOf(state.relic);
+    const lvIdx = RELIC_LEVELS.indexOf(curLv);
     const lvMin = lvIdx <= 0;
     const lvMax = lvIdx >= RELIC_LEVELS.length - 1;
     const chevL =
@@ -1291,9 +1860,12 @@
     const picks = ["초월", "외형", "황금", "경험"]
       .map((r) => {
         const on = !!state.relicEnabled[r];
-        return `<button type="button" class="relic${on ? " on has-deck" : ""}" data-relic="${r}" aria-pressed="${on ? "true" : "false"}">${r}의 성물</button>`;
+        const viewing = r === state.relic;
+        return `<button type="button" class="relic${on ? " on has-deck" : ""}${viewing ? " viewing" : ""}" data-relic="${r}" aria-pressed="${on ? "true" : "false"}" aria-current="${viewing ? "true" : "false"}" title="${viewing ? "현재 보고 있는 성물" : r + "의 성물"}">${r}의 성물</button>`;
       })
       .join("");
+    box.dataset.relic = state.relic;
+    box.dataset.level = String(curLv);
     box.innerHTML = `
       <img class="board-bg" src="성물/${encodeURIComponent(state.relic)}-bg.jpg?v=70" alt="">
       <div class="board-veil" aria-hidden="true"></div>
@@ -1308,7 +1880,7 @@
           <div class="lv-step" role="group" aria-label="성물 레벨">
             <i class="lv-rule" aria-hidden="true"></i>
             <button type="button" class="lv-arr" data-lv-step="-1" aria-label="레벨 내리기"${lvMin ? " disabled" : ""}>${chevL}</button>
-            <b class="lv-num">Lv.${state.level}</b>
+            <b class="lv-num">Lv.${curLv}</b>
             <button type="button" class="lv-arr" data-lv-step="1" aria-label="레벨 올리기"${lvMax ? " disabled" : ""}>${chevR}</button>
             <i class="lv-rule" aria-hidden="true"></i>
           </div>
@@ -1327,7 +1899,7 @@
         <div class="cluster legend">${cluster([14])}</div>
         <div class="cluster hero-r">${cluster([11, 12, 13])}</div>
       </div>
-      <p class="board-note">※ 카드를 누르면 등록 또는 제외를 고를 수 있습니다.<br>※ 제외한 카드를 뺀 나머지 카드들로 최적의 덱을 찾아 줍니다.</p>
+      <p class="board-note">※ 카드를 누르면 등록하거나 제외할 수 있습니다.<br>※ 보유 카드는 상단 등급 버튼에서 선택하고, 그 카드들로 최적 덱을 찾습니다.</p>
       <button type="button" class="ghost board-reset" data-reset-ex>제외시킨 카드 리셋</button>
     `;
   }
@@ -1390,6 +1962,7 @@
   }
 
   function refreshRelicDecks() {
+    syncCurrentLevel();
     if (!state.slots || !selectedGrades().length) {
       clearRelicDecks();
       return null;
@@ -1457,6 +2030,7 @@
   }
 
   async function refreshRelicDecksAsync() {
+    syncCurrentLevel();
     if (!state.slots || !selectedGrades().length) {
       clearRelicDecks();
       return null;
@@ -1626,25 +2200,6 @@
       }</div>
     </div>`;
 
-    const poolHtml = want
-      .map((g) => {
-        const chips = BIND_DATA.hanjang[g]
-          .map((c) => {
-            const off = state.excluded.has(c.name);
-            const taken = takenRelicOf(c.name);
-            const role = taken ? `<em class="tag taken">${taken} 사용</em>` : pairRole(c.name, grouped.inPair, recSet);
-            return `<button type="button" class="card-chip ${off ? "off" : ""} ${taken ? "taken" : ""} g-${RANK[g]}" data-${
-              off ? "in" : "ex"
-            }="${escapeAttr(c.name)}"${slotOf.has(c.name) ? ` data-slot="${slotOf.get(c.name)}"` : ""} title="${escapeAttr(c.name)}${taken ? " · " + taken + "에서 사용 중" : ""}">${chipInner(
-              c.name,
-              `<strong>${escapeHtml(c.name)}</strong>${role}`
-            )}</button>`;
-          })
-          .join("");
-        return `<h3>${g}</h3><div class="chips">${chips}</div>`;
-      })
-      .join("");
-
     box.innerHTML = `
       ${equipHtml}
       ${exBar}
@@ -1652,7 +2207,7 @@
         unusedSlots ? ` · 빈 칸 ${unusedSlots}` : ""
       }${priorUsed.size ? ` · 이전 성물 ${priorUsed.size}장 제외` : ""} · ${grouped.pairLines.filter((l) => l.size === 3).length}개 3장 · ${
         grouped.pairLines.filter((l) => l.size === 2).length
-      }개 2장 · 한장 ${grouped.singles.length} · 카드를 누르면 등록/제외를 고릅니다.</p>
+      }개 2장 · 한장 ${grouped.singles.length} · 보유 카드는 상단 등급 버튼에서 선택합니다.</p>
       ${setHtml}
       <div class="cols">
         <div>
@@ -1661,10 +2216,6 @@
           <p class="mute">한장 ${han.length}줄도 함께 켜집니다.</p>
         </div>
         <div class="fx-wrap">${fxHtml}</div>
-      </div>
-      <div class="pool">
-        <h3>아래 카드중 보유하지 않은 카드는 눌러서 제외할 수 있습니다.</h3>
-        ${poolHtml}
       </div>
     `;
   }
@@ -1681,9 +2232,15 @@
       const gbtn = e.target.closest("[data-grade]");
       if (gbtn) {
         const g = gbtn.dataset.grade;
-        state.grades[g] = !state.grades[g];
-        markDirtyFrom(null);
-        draw();
+        const turningOn = !state.grades[g];
+        if (turningOn) {
+          state.grades[g] = true;
+          markDirtyFrom(null);
+          requestQuietDraw();
+          openCardOwn(g);
+        } else {
+          openCardOwn(g);
+        }
         return;
       }
       const b = e.target.closest("[data-g-enh]");
@@ -1694,6 +2251,44 @@
       markDirtyFrom(null);
       draw();
     });
+    const fxToggle = el("grade-fx-toggle");
+    if (fxToggle) {
+      fxToggle.addEventListener("click", () => {
+        gradeFxOpen = !gradeFxOpen;
+        renderGradeFx();
+      });
+    }
+    const saveNotice = el("save-notice");
+    if (saveNotice) {
+      el("save-notice-ok-btn").addEventListener("click", () => {
+        tapSetBtn(el("save-notice-ok-btn"));
+        closeSaveNotice();
+      });
+      const copyBtn = el("prefs-copy-code");
+      if (copyBtn) copyBtn.addEventListener("click", () => copyExportCode());
+      saveNotice.addEventListener("click", (e) => {
+        if (e.target === saveNotice) closeSaveNotice();
+      });
+    }
+    const exportBtn = el("prefs-export");
+    if (exportBtn) exportBtn.addEventListener("click", openExportPopup);
+    const importOpen = el("prefs-import-open");
+    if (importOpen) importOpen.addEventListener("click", openImportPopup);
+    const importBox = el("prefs-import");
+    if (importBox) {
+      el("prefs-import-apply").addEventListener("click", importPrefsFromInput);
+      el("prefs-import-cancel").addEventListener("click", closeImportPopup);
+      importBox.addEventListener("click", (e) => {
+        if (e.target === importBox) closeImportPopup();
+      });
+    }
+    const importDone = el("prefs-import-done");
+    if (importDone) {
+      el("prefs-import-done-ok").addEventListener("click", closeImportDone);
+      importDone.addEventListener("click", (e) => {
+        if (e.target === importDone) closeImportDone();
+      });
+    }
     el("relic-board").addEventListener("click", (e) => {
       if (e.target.closest("[data-reset-ex]")) {
         state.excluded.clear();
@@ -1713,7 +2308,7 @@
       if (step) {
         if (step.disabled) return;
         stepRelicLevel(Number(step.dataset.lvStep));
-        markDirtyFrom(null);
+        markDirtyFrom(state.relic);
         draw();
         return;
       }
@@ -1729,6 +2324,7 @@
           const wasOn = !!state.relicEnabled[r];
           state.relicEnabled[r] = true;
           state.relic = r;
+          syncCurrentLevel();
           if (!wasOn) markDirtyFrom(r);
         }
         draw();
@@ -1754,14 +2350,12 @@
     el("result").addEventListener("click", (e) => {
       const out = e.target.closest("[data-ex]");
       if (out) {
-        openCardChoice(out.dataset.ex, out.dataset.slot);
+        excludeCard(out.dataset.ex);
         return;
       }
       const back = e.target.closest("[data-in]");
       if (back) {
-        state.excluded.delete(back.dataset.in);
-        markDirtyFrom(null);
-        draw();
+        includeCard(back.dataset.in);
       }
     });
     el("cmp-close").addEventListener("click", closeCompare);
@@ -1812,8 +2406,40 @@
       if (!pick) return;
       registerCard(pick.dataset.bookPick);
     });
+    const ownBox = el("card-own");
+    if (ownBox) {
+      el("card-own-close").addEventListener("click", () => closeCardOwn(true));
+      el("card-own-done").addEventListener("click", finishCardOwnAndSave);
+      el("card-own-disable").addEventListener("click", disableOwnGrade);
+      el("card-own-all-on").addEventListener("click", () => setOwnGradeAll(true));
+      el("card-own-all-off").addEventListener("click", () => setOwnGradeAll(false));
+      ownBox.addEventListener("click", (e) => {
+        if (e.target === ownBox) closeCardOwn(true);
+      });
+      el("card-own-body").addEventListener("click", (e) => {
+        const card = e.target.closest("[data-own-toggle]");
+        if (!card) return;
+        toggleOwnCard(card.dataset.ownToggle);
+      });
+    }
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
+      if (el("prefs-import-done") && el("prefs-import-done").classList.contains("show")) {
+        closeImportDone();
+        return;
+      }
+      if (el("prefs-import") && el("prefs-import").classList.contains("show")) {
+        closeImportPopup();
+        return;
+      }
+      if (el("save-notice") && el("save-notice").classList.contains("show")) {
+        closeSaveNotice();
+        return;
+      }
+      if (el("card-own") && el("card-own").classList.contains("show")) {
+        closeCardOwn(true);
+        return;
+      }
       if (el("card-book").classList.contains("show")) {
         closeCardBook();
         return;
@@ -1826,31 +2452,49 @@
     });
   }
 
-  async function draw() {
+  async function draw(opts) {
+    const quiet = !!(opts && opts.quiet);
     const seq = ++drawSeq;
     if (needsOptimizeWork()) {
-      showOptLoading();
-      await yieldToUi();
-      if (seq !== drawSeq) return;
-      const ev = await refreshRelicDecksAsync();
-      if (seq !== drawSeq) return;
-      hideOptLoading();
-      renderResult(ev);
+      if (quiet) {
+        // 제외/포함은 로딩 팝업·프레임 양보 없이 동기 갱신해 깜빡임을 줄임
+        const ev = refreshRelicDecks();
+        if (seq !== drawSeq) return;
+        renderResult(ev);
+      } else {
+        showOptLoading();
+        await yieldToUi();
+        if (seq !== drawSeq) return;
+        const ev = await refreshRelicDecksAsync();
+        if (seq !== drawSeq) return;
+        hideOptLoading();
+        renderResult(ev);
+      }
     } else {
       renderResult(refreshRelicDecks());
     }
     if (seq !== drawSeq) return;
-    renderControls();
-    renderBoard();
+    renderControls(quiet ? { quiet: true } : null);
+    renderBoard(quiet ? { quiet: true } : null);
     renderSaveBar();
+    restoreScroll();
+    scheduleSave();
   }
 
   window.BIND_APP = { state, optimize, slotBreakdown, selectedGrades, effectValue, setEnhanceAll, enhanceOf, setRelicLevel, slotsFromLevel, usedByRelicsBefore, refreshRelicDecks, markDirtyFrom, relicUsingCard };
 
   if (typeof document !== "undefined") {
     document.addEventListener("DOMContentLoaded", () => {
+      const restored = loadPrefs();
       bind();
       draw();
+      if (restored) {
+        const note = el("grade-note-load");
+        if (note) {
+          note.hidden = false;
+          note.textContent = "저장된 내 카드를 불러왔습니다.";
+        }
+      }
     });
   }
 })();

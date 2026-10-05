@@ -115,67 +115,67 @@ window.BIND_DATA = {
       },
       {
         "name": "교단의 강철검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "이글나이트의 검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "황혼의 검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "지휘관의 검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "견고한 흑검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "서리 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "꼬리깃 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "타이드팽 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "트리니티 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "포식자의 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "청옥의 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "사령의 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "격랑의 대검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
@@ -215,17 +215,17 @@ window.BIND_DATA = {
       },
       {
         "name": "기사의 은검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "방패병의 검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       },
       {
         "name": "근위대의 검",
-        "kind": "초월",
+        "kind": "무기외형",
         "grade": "희귀"
       }
     ],
@@ -4675,11 +4675,11 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "PvP 피해 감소"
+          "stat": "골드 획득량 증가"
         },
         {
           "tier": 5,
-          "stat": "골드 획득량 증가"
+          "stat": "PvP 피해 감소"
         },
         {
           "tier": 6,
@@ -4725,15 +4725,15 @@ window.BIND_DATA = {
         },
         {
           "tier": 3,
-          "stat": "PvE 피해 감소 무시"
+          "stat": "경험치 획득량 증가"
         },
         {
           "tier": 4,
-          "stat": "PvP 피해 감소 무시"
+          "stat": "PvE 피해 감소 무시"
         },
         {
           "tier": 5,
-          "stat": "경험치 획득량 증가"
+          "stat": "PvP 피해 감소 무시"
         },
         {
           "tier": 6,
