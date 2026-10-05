@@ -572,10 +572,33 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .bslot.filled .bslot-need {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 3px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .bslot-need .enh-mark {
+      flex: none;
+      font-style: normal;
+      font-size: 10px;
+      font-weight: 900;
+      color: #f3d56a;
+      text-shadow: 0 0 8px rgba(243, 213, 106, .35);
+    }
+    .bslot-need .bslot-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .bslot.g-1 .bslot-need { color: #6ea8ff; }
     .bslot.g-2 .bslot-need { color: #e35d5d; }
     .bslot.g-3 .bslot-need { color: #e4c36a; }
-    .bslot.filled .bslot-need { color: var(--ink); font-weight: 700; }
+    .bslot.filled.g-1 .bslot-need,
+    .bslot.filled.g-2 .bslot-need,
+    .bslot.filled.g-3 .bslot-need { color: var(--ink); }
     .toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
     .save-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
     .save-row button {
@@ -612,6 +635,32 @@
     #cmp-overlay { z-index: 85; }
     #card-choice { z-index: 90; align-items: center; }
     #card-book { z-index: 92; align-items: flex-start; }
+    #opt-loading { z-index: 95; align-items: center; pointer-events: all; }
+    .opt-loading-box {
+      min-width: 260px;
+      padding: 22px 28px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #17130e;
+      box-shadow: 0 16px 40px rgba(0,0,0,.55);
+      text-align: center;
+    }
+    .opt-loading-box strong {
+      display: inline-block;
+      color: #fffdf6;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .opt-loading-dots {
+      display: inline-block;
+      min-width: 1.4em;
+      text-align: left;
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
     .card-choice-face {
       display: flex;
       flex-direction: column;
@@ -1105,7 +1154,12 @@
       <div class="book-grid" id="card-book-grid"></div>
     </div>
   </div>
-  <script src="data.js?v=101"></script>
-  <script src="app.js?v=101"></script>
+  <div class="cmp-overlay" id="opt-loading" aria-live="polite" aria-busy="true">
+    <div class="opt-loading-box" role="status">
+      <strong>결속 효과 최적화중</strong><span class="opt-loading-dots" id="opt-loading-dots">.</span>
+    </div>
+  </div>
+  <script src="data.js?v=108"></script>
+  <script src="app.js?v=108"></script>
 </body>
 </html>

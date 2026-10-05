@@ -4539,11 +4539,11 @@ window.BIND_DATA = {
       "PVE": [
         {
           "tier": 1,
-          "stat": "PvE 방어력"
+          "stat": "일반 공격 피해 감소 무시"
         },
         {
           "tier": 2,
-          "stat": "일반 공격 피해 감소 무시"
+          "stat": "스킬 피해 감소 무시"
         },
         {
           "tier": 3,
@@ -4551,11 +4551,11 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "스킬 피해 감소 무시"
+          "stat": "PvE 방어력"
         },
         {
           "tier": 5,
-          "stat": "물약 최대 소지량"
+          "stat": "PvP 방어력"
         },
         {
           "tier": 6,
@@ -4563,17 +4563,17 @@ window.BIND_DATA = {
         },
         {
           "tier": 7,
-          "stat": "PvP 방어력"
+          "stat": "물약 최대 소지량"
         }
       ],
       "PVP": [
         {
           "tier": 1,
-          "stat": "PvP 방어력"
+          "stat": "일반 공격 피해 감소 무시"
         },
         {
           "tier": 2,
-          "stat": "일반 공격 피해 감소 무시"
+          "stat": "스킬 피해 감소 무시"
         },
         {
           "tier": 3,
@@ -4581,19 +4581,19 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "스킬 피해 감소 무시"
+          "stat": "PvP 방어력"
         },
         {
           "tier": 5,
-          "stat": "글로벌 쿨타임 감소"
+          "stat": "PvE 방어력"
         },
         {
           "tier": 6,
-          "stat": "물약 최대 소지량"
+          "stat": "글로벌 쿨타임 감소"
         },
         {
           "tier": 7,
-          "stat": "PvE 방어력"
+          "stat": "물약 최대 소지량"
         }
       ]
     },
@@ -4605,27 +4605,27 @@ window.BIND_DATA = {
         },
         {
           "tier": 2,
-          "stat": "PvE 공격력"
-        },
-        {
-          "tier": 3,
-          "stat": "시전 속도"
-        },
-        {
-          "tier": 4,
           "stat": "스킬 피해 감소"
         },
         {
+          "tier": 3,
+          "stat": "PvE 공격력"
+        },
+        {
+          "tier": 4,
+          "stat": "PvP 공격력"
+        },
+        {
           "tier": 5,
-          "stat": "물약 회복률"
+          "stat": "시전 속도"
         },
         {
           "tier": 6,
-          "stat": "글로벌 쿨타임 감소"
+          "stat": "물약 회복률"
         },
         {
           "tier": 7,
-          "stat": "PvP 공격력"
+          "stat": "글로벌 쿨타임 감소"
         }
       ],
       "PVP": [
@@ -4643,19 +4643,19 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "시전 속도"
+          "stat": "PvE 공격력"
         },
         {
           "tier": 5,
-          "stat": "물약 회복률"
+          "stat": "시전 속도"
         },
         {
           "tier": 6,
-          "stat": "글로벌 쿨타임 감소"
+          "stat": "물약 회복률"
         },
         {
           "tier": 7,
-          "stat": "PvE 공격력"
+          "stat": "글로벌 쿨타임 감소"
         }
       ]
     },
@@ -4675,25 +4675,25 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "골드 획득량 증가"
+          "stat": "PvP 피해 감소"
         },
         {
           "tier": 5,
-          "stat": "HP 회복"
+          "stat": "골드 획득량 증가"
         },
         {
           "tier": 6,
-          "stat": "PvP 피해 감소"
+          "stat": "HP 회복"
         }
       ],
       "PVP": [
         {
           "tier": 1,
-          "stat": "스킬 명중"
+          "stat": "일반 공격 명중"
         },
         {
           "tier": 2,
-          "stat": "일반 공격 명중"
+          "stat": "스킬 명중"
         },
         {
           "tier": 3,
@@ -4701,7 +4701,7 @@ window.BIND_DATA = {
         },
         {
           "tier": 4,
-          "stat": "HP 회복"
+          "stat": "PvE 피해 감소"
         },
         {
           "tier": 5,
@@ -4709,7 +4709,7 @@ window.BIND_DATA = {
         },
         {
           "tier": 6,
-          "stat": "PvE 피해 감소"
+          "stat": "HP 회복"
         }
       ]
     },
@@ -4725,45 +4725,45 @@ window.BIND_DATA = {
         },
         {
           "tier": 3,
-          "stat": "경험치 획득량 증가"
-        },
-        {
-          "tier": 4,
           "stat": "PvE 피해 감소 무시"
         },
         {
+          "tier": 4,
+          "stat": "PvP 피해 감소 무시"
+        },
+        {
           "tier": 5,
-          "stat": "MP 회복"
+          "stat": "경험치 획득량 증가"
         },
         {
           "tier": 6,
-          "stat": "PvP 피해 감소 무시"
+          "stat": "MP 회복"
         }
       ],
       "PVP": [
         {
           "tier": 1,
-          "stat": "스킬 회피"
-        },
-        {
-          "tier": 2,
           "stat": "일반 공격 회피"
         },
         {
-          "tier": 3,
-          "stat": "경험치 획득량 증가"
+          "tier": 2,
+          "stat": "스킬 회피"
         },
         {
-          "tier": 4,
+          "tier": 3,
           "stat": "PvP 피해 감소 무시"
         },
         {
+          "tier": 4,
+          "stat": "PvE 피해 감소 무시"
+        },
+        {
           "tier": 5,
-          "stat": "MP 회복"
+          "stat": "경험치 획득량 증가"
         },
         {
           "tier": 6,
-          "stat": "PvE 피해 감소 무시"
+          "stat": "MP 회복"
         }
       ]
     }

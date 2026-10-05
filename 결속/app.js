@@ -62,12 +62,21 @@
   }
 
   const FOCUS = {
+    초월: { hits: ["일반 공격 피해 감소 무시", "스킬 피해 감소 무시"], extras: [] },
+    외형: { hits: ["일반 공격 피해 감소", "스킬 피해 감소"], extras: [] },
     황금: { hits: ["일반 공격 명중", "스킬 명중"], extras: [] },
     경험: { hits: ["일반 공격 회피", "스킬 회피"], extras: ["경험치 획득량 증가"] },
   };
 
   function focusOf(relic) {
     return FOCUS[relic] || null;
+  }
+
+  function amountWeight(parsed) {
+    const v = Number(parsed.value) || 1;
+    if (parsed.unit === "%") return v * 100;
+    if (parsed.unit === "초") return v * 1000;
+    return v;
   }
 
   function focusHitCoverage(pts, relic) {
@@ -137,7 +146,7 @@
           if (seenHit[parsed.name]) w = TIER_W[4] || w;
           else seenHit[parsed.name] = true;
         }
-        v += spec ? w * (parsed.value || 1) : w;
+        v += spec ? w * amountWeight(parsed) : w;
       }
     }
     if (spec) {
@@ -261,14 +270,110 @@
     return selectedGrades().reduce((s, g) => s + pts[g], 0);
   }
 
+  let cardIndexCache = null;
+  let dirtyStart = 0;
+  const lastEvByRelic = { 초월: null, 외형: null, 황금: null, 경험: null };
+  const BITMASK_PAIR_LIMIT = 12;
+  const FOCUS_DIST_LIMIT = 72;
+
   function cardIndex() {
+    if (cardIndexCache) return cardIndexCache;
     const map = new Map();
     for (const g of BIND_DATA.grades) {
       for (const c of BIND_DATA.hanjang[g]) {
         map.set(c.name, { ...c, rank: RANK[c.grade] });
       }
     }
+    cardIndexCache = map;
     return map;
+  }
+
+  function markDirtyFrom(relic) {
+    if (relic == null) {
+      dirtyStart = 0;
+      return;
+    }
+    const i = RELIC_ORDER.indexOf(relic);
+    dirtyStart = i < 0 ? 0 : Math.min(dirtyStart, i);
+  }
+
+  function relicUsingCard(name) {
+    for (const r of RELIC_ORDER) {
+      if (!state.relicEnabled[r]) continue;
+      const snap = state.relicDecks[r];
+      if (snap && snap.names && snap.names.includes(name)) return r;
+      const pins = state.pinned[r] || [];
+      if (pins.includes(name)) return r;
+    }
+    return state.relic;
+  }
+
+  function combCount(n, k) {
+    if (k < 0 || k > n) return 0;
+    k = Math.min(k, n - k);
+    let r = 1;
+    for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+    return r;
+  }
+
+  function forEachGradeDist(n, gs, fn) {
+    if (!n || !gs.length) return;
+    if (gs.length === 1) {
+      const one = {};
+      one[gs[0]] = n;
+      fn(one);
+      return;
+    }
+    const total = combCount(n + gs.length - 1, gs.length - 1);
+    if (total <= FOCUS_DIST_LIMIT) {
+      const acc = {};
+      const rec = (i, left) => {
+        if (i === gs.length - 1) {
+          acc[gs[i]] = left;
+          fn(Object.assign({}, acc));
+          return;
+        }
+        for (let k = 0; k <= left; k++) {
+          acc[gs[i]] = k;
+          rec(i + 1, left - k);
+        }
+      };
+      rec(0, n);
+      return;
+    }
+    const seen = new Set();
+    const push = (counts) => {
+      const key = gs.map((g) => counts[g] || 0).join(",");
+      if (seen.has(key)) return;
+      seen.add(key);
+      fn(counts);
+    };
+    const equal = {};
+    let left = n;
+    for (let i = 0; i < gs.length; i++) {
+      const take = i === gs.length - 1 ? left : Math.floor(left / (gs.length - i));
+      equal[gs[i]] = take;
+      left -= take;
+    }
+    push(equal);
+    for (let prefer = 0; prefer < gs.length; prefer++) {
+      const acc = {};
+      left = n;
+      for (let i = 0; i < gs.length; i++) {
+        const g = gs[(prefer + i) % gs.length];
+        const need = Math.ceil(10 / (5 + enhanceOf(g)));
+        const take = i === gs.length - 1 ? left : Math.min(left, need);
+        acc[g] = take;
+        left -= take;
+      }
+      push(acc);
+    }
+    for (const g of gs) {
+      const acc = {};
+      for (const x of gs) acc[x] = 0;
+      acc[g] = n;
+      push(acc);
+    }
   }
 
   function canAssign(names, mins, cards) {
@@ -460,7 +565,7 @@
       if (ev && (!best || ev.score > best.score)) best = ev;
     };
 
-    if (pairs.length <= 18) {
+    if (pairs.length <= BITMASK_PAIR_LIMIT) {
       const n = pairs.length;
       const limit = 1 << n;
       for (let mask = 1; mask < limit; mask++) {
@@ -474,7 +579,8 @@
         return selectedGrades().reduce((s, g) => s + (pts[g] || 0), 0) / p.cards.length;
       };
       const ordered = pairs.slice().sort((a, b) => density(b) - density(a));
-      const seeds = [[]].concat(pairs.map((p) => p.cards.slice()));
+      const seedPairs = ordered.slice(0, 24);
+      const seeds = [[]].concat(seedPairs.map((p) => p.cards.slice()));
       for (const seed of seeds) {
         let cur = [...new Set(seed)];
         if (!canAssign(cur, mins, cards)) continue;
@@ -501,20 +607,10 @@
       const n = leftover.length;
       const gs = selectedGrades();
       if (n && gs.length) {
-        const acc = {};
-        const rec = (i, left) => {
-          if (i === gs.length - 1) {
-            acc[gs[i]] = left;
-            const names = pickGradeCounts(locked, leftover, acc, allowed, blocked);
-            if (names) trySet(names);
-            return;
-          }
-          for (let k = 0; k <= left; k++) {
-            acc[gs[i]] = k;
-            rec(i + 1, left - k);
-          }
-        };
-        rec(0, n);
+        forEachGradeDist(n, gs, (acc) => {
+          const names = pickGradeCounts(locked, leftover, acc, allowed, blocked);
+          if (names) trySet(names);
+        });
       }
     }
     return best;
@@ -611,6 +707,7 @@
   function snapshotNow() {
     const relics = {};
     if (state.slots && selectedGrades().length) {
+      markDirtyFrom(null);
       refreshRelicDecks();
       for (const r of RELIC_ORDER) {
         relics[r] = state.relicDecks[r] ? cloneCapture(state.relicDecks[r]) : null;
@@ -1097,6 +1194,7 @@
     pins[slot] = name;
     choiceName = name;
     choiceSlot = slot;
+    markDirtyFrom(state.relic);
     closeCardBook();
     closeCardChoice();
     draw();
@@ -1109,11 +1207,14 @@
 
   function excludeCard(name) {
     if (!name) return;
+    const from = relicUsingCard(name);
     state.excluded.add(name);
-    const pins = state.pinned[state.relic];
-    if (pins) {
+    for (const r of RELIC_ORDER) {
+      const pins = state.pinned[r];
+      if (!pins) continue;
       for (let i = 0; i < pins.length; i++) if (pins[i] === name) pins[i] = null;
     }
+    markDirtyFrom(from);
     closeCardChoice();
     closeCardBook();
     draw();
@@ -1155,11 +1256,13 @@
     const pinned = !!(state.pinned[state.relic] && state.pinned[state.relic][index]);
     const pin = pinned ? `<i class="pin-mark">등록</i>` : "";
     if (card) {
+      const enh = enhanceOf(card.grade);
+      const enhMark = enh > 0 ? `<i class="enh-mark">${enh}강</i>` : "";
       return `<button type="button" class="bslot g-${def.min} open filled${pinned ? " is-pin" : ""}" data-ex="${escapeAttr(
         card.name
       )}" data-slot="${index}" title="클릭해서 등록 또는 제외">
         <span class="bslot-box"><img src="${portraitSrc(card.name)}" alt="" onerror="this.style.visibility='hidden'">${pin}</span>
-        <span class="bslot-need">${escapeHtml(card.name)}</span>
+        <span class="bslot-need">${enhMark}<span class="bslot-name">${escapeHtml(card.name)}</span></span>
       </button>`;
     }
     return `<button type="button" class="bslot g-${def.min} open empty" data-reg-slot="${index}" title="클릭해서 카드 등록">
@@ -1278,8 +1381,12 @@
   }
 
   function clearRelicDecks() {
-    for (const r of RELIC_ORDER) state.relicDecks[r] = null;
+    for (const r of RELIC_ORDER) {
+      state.relicDecks[r] = null;
+      lastEvByRelic[r] = null;
+    }
     lastCapture = null;
+    dirtyStart = 0;
   }
 
   function refreshRelicDecks() {
@@ -1288,20 +1395,96 @@
       return null;
     }
     let currentEv = null;
-    for (const r of RELIC_ORDER) {
+    for (let i = 0; i < RELIC_ORDER.length; i++) {
+      const r = RELIC_ORDER[i];
       if (!state.relicEnabled[r]) {
         state.relicDecks[r] = null;
+        lastEvByRelic[r] = null;
+        continue;
+      }
+      if (i < dirtyStart && lastEvByRelic[r]) {
+        if (r === state.relic) currentEv = lastEvByRelic[r];
         continue;
       }
       const ev = optimize(r);
+      lastEvByRelic[r] = ev;
       state.relicDecks[r] = ev ? captureFrom(ev, r) : null;
       if (r === state.relic) currentEv = ev;
     }
+    dirtyStart = RELIC_ORDER.length;
     lastCapture = state.relicDecks[state.relic];
     return currentEv;
   }
 
-  function renderResult() {
+  function needsOptimizeWork() {
+    if (!state.slots || !selectedGrades().length) return false;
+    for (let i = dirtyStart; i < RELIC_ORDER.length; i++) {
+      if (state.relicEnabled[RELIC_ORDER[i]]) return true;
+    }
+    return false;
+  }
+
+  function yieldToUi() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+  }
+
+  let optDotTimer = null;
+  let drawSeq = 0;
+
+  function showOptLoading() {
+    const box = el("opt-loading");
+    const dots = el("opt-loading-dots");
+    if (!box) return;
+    box.classList.add("show");
+    let n = 1;
+    if (dots) dots.textContent = ".";
+    if (optDotTimer) clearInterval(optDotTimer);
+    optDotTimer = setInterval(() => {
+      n = (n % 3) + 1;
+      if (dots) dots.textContent = ".".repeat(n);
+    }, 380);
+  }
+
+  function hideOptLoading() {
+    if (optDotTimer) {
+      clearInterval(optDotTimer);
+      optDotTimer = null;
+    }
+    const box = el("opt-loading");
+    if (box) box.classList.remove("show");
+  }
+
+  async function refreshRelicDecksAsync() {
+    if (!state.slots || !selectedGrades().length) {
+      clearRelicDecks();
+      return null;
+    }
+    let currentEv = null;
+    for (let i = 0; i < RELIC_ORDER.length; i++) {
+      const r = RELIC_ORDER[i];
+      if (!state.relicEnabled[r]) {
+        state.relicDecks[r] = null;
+        lastEvByRelic[r] = null;
+        continue;
+      }
+      if (i < dirtyStart && lastEvByRelic[r]) {
+        if (r === state.relic) currentEv = lastEvByRelic[r];
+        continue;
+      }
+      await yieldToUi();
+      const ev = optimize(r);
+      lastEvByRelic[r] = ev;
+      state.relicDecks[r] = ev ? captureFrom(ev, r) : null;
+      if (r === state.relic) currentEv = ev;
+    }
+    dirtyStart = RELIC_ORDER.length;
+    lastCapture = state.relicDecks[state.relic];
+    return currentEv;
+  }
+
+  function renderResult(ev) {
     const box = el("result");
     const want = selectedGrades();
     if (!state.slots && !want.length) {
@@ -1319,7 +1502,7 @@
       box.innerHTML = `<p class="empty">등급을 하나 이상 선택하세요.</p>`;
       return;
     }
-    const ev = refreshRelicDecks();
+    if (ev === undefined) ev = refreshRelicDecks();
     if (!state.relicEnabled[state.relic]) {
       lastCapture = null;
       box.innerHTML = `<p class="empty">${state.relic}의 성물이 꺼져 있습니다. 버튼을 다시 누르면 결속이 적용됩니다.</p>`;
@@ -1499,6 +1682,7 @@
       if (gbtn) {
         const g = gbtn.dataset.grade;
         state.grades[g] = !state.grades[g];
+        markDirtyFrom(null);
         draw();
         return;
       }
@@ -1507,11 +1691,13 @@
       e.preventDefault();
       if (!state.gradeEnhance) state.gradeEnhance = {};
       state.gradeEnhance[b.dataset.gEnh] = Number(b.dataset.n);
+      markDirtyFrom(null);
       draw();
     });
     el("relic-board").addEventListener("click", (e) => {
       if (e.target.closest("[data-reset-ex]")) {
         state.excluded.clear();
+        markDirtyFrom(null);
         draw();
         return;
       }
@@ -1527,6 +1713,7 @@
       if (step) {
         if (step.disabled) return;
         stepRelicLevel(Number(step.dataset.lvStep));
+        markDirtyFrom(null);
         draw();
         return;
       }
@@ -1537,9 +1724,12 @@
         if (state.relic === r && state.relicEnabled[r]) {
           state.relicEnabled[r] = false;
           state.pinned[r] = SLOT_DEFS.map(() => null);
+          markDirtyFrom(r);
         } else {
+          const wasOn = !!state.relicEnabled[r];
           state.relicEnabled[r] = true;
           state.relic = r;
+          if (!wasOn) markDirtyFrom(r);
         }
         draw();
         return;
@@ -1547,6 +1737,7 @@
       const mode = e.target.closest("[data-mode]");
       if (mode) {
         state.mode = mode.dataset.mode;
+        markDirtyFrom(null);
         draw();
         return;
       }
@@ -1569,6 +1760,7 @@
       const back = e.target.closest("[data-in]");
       if (back) {
         state.excluded.delete(back.dataset.in);
+        markDirtyFrom(null);
         draw();
       }
     });
@@ -1634,14 +1826,26 @@
     });
   }
 
-  function draw() {
-    renderResult();
+  async function draw() {
+    const seq = ++drawSeq;
+    if (needsOptimizeWork()) {
+      showOptLoading();
+      await yieldToUi();
+      if (seq !== drawSeq) return;
+      const ev = await refreshRelicDecksAsync();
+      if (seq !== drawSeq) return;
+      hideOptLoading();
+      renderResult(ev);
+    } else {
+      renderResult(refreshRelicDecks());
+    }
+    if (seq !== drawSeq) return;
     renderControls();
     renderBoard();
     renderSaveBar();
   }
 
-  window.BIND_APP = { state, optimize, slotBreakdown, selectedGrades, effectValue, setEnhanceAll, enhanceOf, setRelicLevel, slotsFromLevel, usedByRelicsBefore, refreshRelicDecks };
+  window.BIND_APP = { state, optimize, slotBreakdown, selectedGrades, effectValue, setEnhanceAll, enhanceOf, setRelicLevel, slotsFromLevel, usedByRelicsBefore, refreshRelicDecks, markDirtyFrom, relicUsingCard };
 
   if (typeof document !== "undefined") {
     document.addEventListener("DOMContentLoaded", () => {
