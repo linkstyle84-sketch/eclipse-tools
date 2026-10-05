@@ -819,10 +819,168 @@
   }
 
   function anyOverlayOpen() {
-    return ["set-prompt", "cmp-overlay", "card-choice", "card-book", "card-own", "save-notice", "prefs-import", "prefs-import-done"].some((id) => {
+    return ["set-prompt", "cmp-overlay", "card-choice", "card-book", "card-own", "save-notice", "prefs-import", "prefs-import-done", "deck-export", "stat-guide", "stat-guide-soon"].some((id) => {
       const n = el(id);
       return n && n.classList.contains("show");
     });
+  }
+
+  function renderStatGuideBody() {
+    const box = el("stat-guide-body");
+    if (!box) return;
+    const curMode = state.mode === "PVP" ? "PVP" : "PVE";
+    const tiers = BIND_DATA.tiers || {};
+    box.innerHTML = RELIC_ORDER.map((r) => {
+      const modes = ["PVE", "PVP"]
+        .map((m) => {
+          const list = ((tiers[r] || {})[m] || [])
+            .slice()
+            .sort((a, b) => (a.tier || 0) - (b.tier || 0));
+          const rows = list.length
+            ? list.map((t) => `<li>${t.tier}티어 · ${escapeHtml(t.stat)}</li>`).join("")
+            : `<li>데이터 없음</li>`;
+          return `<div class="stat-guide-mode${m === curMode ? " cur" : ""}"><b>${m}${m === curMode ? " · 현재" : ""}</b><ol>${rows}</ol></div>`;
+        })
+        .join("");
+      return `<section class="stat-guide-relic"><h3>${r}의 성물</h3><div class="stat-guide-modes">${modes}</div></section>`;
+    }).join("");
+  }
+
+  function openStatGuide() {
+    renderStatGuideBody();
+    closeStatGuideSoon(true);
+    const msg = el("stat-guide-msg");
+    if (msg) {
+      msg.textContent =
+        "현재 추천에 쓰는 기본 우선순위입니다. 1티어가 가장 선호하는 스탯이며, 보드의 PVE / PVP 버튼에 맞춰 적용됩니다.";
+      msg.style.color = "#c8f0c8";
+    }
+    const box = el("stat-guide");
+    if (box) box.classList.add("show");
+    const guideBox = box && box.querySelector(".stat-guide-box");
+    if (guideBox) bindDragScroll(guideBox);
+    lockPage();
+  }
+
+  function closeStatGuide() {
+    closeStatGuideSoon(true);
+    const box = el("stat-guide");
+    if (box) box.classList.remove("show");
+    unlockPage();
+  }
+
+  function openStatGuideSoon() {
+    const box = el("stat-guide-soon");
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function closeStatGuideSoon(keepLock) {
+    const box = el("stat-guide-soon");
+    if (box) box.classList.remove("show");
+    if (!keepLock) unlockPage();
+  }
+
+  function deckExportText() {
+    const cards = cardIndex();
+    const lines = ["[이클립스 결속 추천 목록]", "모드: " + state.mode, ""];
+    for (const r of RELIC_ORDER) {
+      lines.push("■ " + r + "의 성물");
+      if (!state.relicEnabled[r]) {
+        lines.push("(성물 꺼짐)", "");
+        continue;
+      }
+      const snap = state.relicDecks[r];
+      if (!snap || !snap.names || !snap.names.length) {
+        lines.push("Lv." + levelOf(r), "(배치된 카드 없음)", "");
+        continue;
+      }
+      lines.push("Lv." + (snap.level || levelOf(r)));
+      const placed = assignSlots(snap.names, cards, r);
+      let n = 0;
+      for (const slot of placed) {
+        if (!slot.card) continue;
+        n += 1;
+        const g = slot.card.grade;
+        const enh =
+          snap.gradeEnhance && snap.gradeEnhance[g] != null
+            ? Number(snap.gradeEnhance[g]) || 0
+            : enhanceOf(g);
+        lines.push(n + ". " + g + " · " + enh + "강 · " + slot.card.name);
+      }
+      if (!n) lines.push("(배치된 카드 없음)");
+      lines.push("");
+    }
+    lines.push("※ 위 목록을 보고 인게임 결속에 같은 카드를 등록하세요.");
+    return lines.join("\n").replace(/\n+$/, "\n");
+  }
+
+  function openDeckExport() {
+    const ta = el("deck-export-code");
+    const msg = el("deck-export-msg");
+    if (ta) ta.value = deckExportText();
+    if (msg) {
+      msg.textContent = "성물별 추천 카드 목록입니다. 복사해 카톡 등으로 공유한 뒤, 인게임 결속에 등록하세요.";
+      msg.style.color = "#c8f0c8";
+    }
+    const box = el("deck-export");
+    if (box) box.classList.add("show");
+    lockPage();
+  }
+
+  function closeDeckExport() {
+    const box = el("deck-export");
+    if (box) box.classList.remove("show");
+    unlockPage();
+  }
+
+  async function copyDeckExport() {
+    const ta = el("deck-export-code");
+    if (!ta) return;
+    if (!ta.value) ta.value = deckExportText();
+    const text = ta.value;
+    const msg = el("deck-export-msg");
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+      }
+      if (msg) {
+        msg.textContent = "텍스트를 복사했습니다. 카톡·메모장에 붙여 넣으세요.";
+        msg.style.color = "#c8f0c8";
+      }
+    } catch (err) {
+      if (ta) {
+        ta.focus();
+        ta.select();
+      }
+      if (msg) {
+        msg.textContent = "자동 복사에 실패했습니다. 텍스트를 직접 선택해 복사하세요.";
+        msg.style.color = "#ff8b8b";
+      }
+    }
+  }
+
+  function downloadDeckExport() {
+    const ta = el("deck-export-code");
+    const text = (ta && ta.value) || deckExportText();
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "이클립스-결속목록.txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+    const msg = el("deck-export-msg");
+    if (msg) {
+      msg.textContent = "텍스트 파일을 저장했습니다.";
+      msg.style.color = "#c8f0c8";
+    }
   }
 
   function lockPage() {
@@ -1203,6 +1361,7 @@
         </button>`;
       })
       .join("");
+    bindDragScroll(grid);
   }
 
   function openCardBook(grade) {
@@ -1398,26 +1557,20 @@
     return out;
   }
 
-  function openSaveNotice(ok) {
-    const box = el("save-notice");
-    const msg = el("save-notice-ok");
-    const title = el("save-notice-title");
-    if (title) title.textContent = ok ? "내 카드 목록 내려받기" : "저장 실패";
-    if (msg) {
-      msg.textContent = ok
-        ? "아래 코드로 다른 기기에서도 내 카드를 불러올 수 있습니다."
-        : "저장에 실패했습니다. 시크릿 모드이거나 저장 공간이 부족할 수 있습니다.";
-      msg.style.color = ok ? "#c8f0c8" : "#ff8b8b";
-    }
-    if (ok) fillExportCode();
-    if (box) box.classList.add("show");
-    lockPage();
-  }
-
   function closeSaveNotice() {
     const box = el("save-notice");
     if (box) box.classList.remove("show");
     unlockPage();
+  }
+
+  function showPrefsSaveNote(ok) {
+    const note = el("grade-note-load");
+    if (!note) return;
+    note.hidden = false;
+    note.textContent = ok
+      ? "내 카드를 저장했습니다."
+      : "저장에 실패했습니다. 시크릿 모드이거나 저장 공간이 부족할 수 있습니다.";
+    note.style.color = ok ? "#c8f0c8" : "#ff8b8b";
   }
 
   function openExportPopup() {
@@ -1535,8 +1688,7 @@
       clearTimeout(saveTimer);
       saveTimer = null;
     }
-    const ok = savePrefs();
-    openSaveNotice(ok);
+    return savePrefs();
   }
 
   function scheduleSave() {
@@ -1625,6 +1777,7 @@
         return `<section class="own-sec"><h3>${g.label}<em>${g.items.length}</em></h3><div class="own-grid">${cards}</div></section>`;
       })
       .join("");
+    bindDragScroll(body);
   }
 
   function openCardOwn(grade) {
@@ -1679,7 +1832,7 @@
 
   function finishCardOwnAndSave() {
     closeCardOwn(true);
-    savePrefsManual();
+    showPrefsSaveNote(savePrefsManual());
   }
 
   function requestQuietDraw() {
@@ -1699,12 +1852,16 @@
   function renderControls(opts) {
     const quiet = !!(opts && opts.quiet);
     const box = el("grades");
+    const owned = ownedCountByGrade();
     if (quiet && box && box.querySelector(".grade-btn")) {
       for (const g of BIND_DATA.grades) {
         const ptsEl = box.querySelector(`[data-grade="${g}"] .gpts`);
-        if (!ptsEl) continue;
-        const on = !!state.grades[g];
-        ptsEl.textContent = on && lastCapture ? lastCapture.pts[g] || 0 : 0;
+        if (ptsEl) {
+          const on = !!state.grades[g];
+          ptsEl.textContent = on && lastCapture ? lastCapture.pts[g] || 0 : 0;
+        }
+        const ownEl = box.querySelector(`.grow.g-${RANK[g]} .g-own`);
+        if (ownEl) ownEl.textContent = `내 카드 ${owned[g] || 0}장`;
       }
       renderGradeFx();
       return;
@@ -1713,16 +1870,20 @@
       .map((g) => {
         const on = !!state.grades[g];
         const pts = on && lastCapture ? lastCapture.pts[g] || 0 : 0;
+        const ownN = owned[g] || 0;
         const src = "등급/" + encodeURIComponent(g) + "-" + (on ? "on" : "off") + ".png?v=64";
         const enh = ENH_OPTS.map(
           (n) =>
             `<button type="button" class="${enhanceOf(g) === n ? "on" : ""}" data-g-enh="${g}" data-n="${n}">${n}강</button>`
         ).join("");
         return `<div class="grow g-${RANK[g]}">
-          <button type="button" class="grade-btn g-${RANK[g]}${on ? " on" : ""}" data-grade="${g}" aria-pressed="${on}" aria-label="${g}" title="${g}${on ? " 보유 카드 선택" : " 켜고 보유 카드 선택"}">
-            <img src="${src}" alt="">
-            <b class="gpts" aria-hidden="true">${pts}</b>
-          </button>
+          <div class="grade-stack">
+            <button type="button" class="grade-btn g-${RANK[g]}${on ? " on" : ""}" data-grade="${g}" aria-pressed="${on}" aria-label="${g}" title="${g}${on ? " 보유 카드 선택" : " 켜고 보유 카드 선택"}">
+              <img src="${src}" alt="">
+              <b class="gpts" aria-hidden="true">${pts}</b>
+            </button>
+            <span class="g-own">내 카드 ${ownN}장</span>
+          </div>
           <div class="g-enh">${enh}</div>
         </div>`;
       })
@@ -1781,15 +1942,110 @@
       const g = sc.dataset.fxGrade;
       if (scrolls[g] != null) {
         sc.scrollTop = scrolls[g];
-        return;
+      } else {
+        const p = gradePtsNow(g);
+        const firstOff = sc.querySelector("li.off");
+        if (p > 0 && firstOff) {
+          const top = Math.max(0, firstOff.offsetTop - sc.clientHeight * 0.45);
+          sc.scrollTop = top;
+        }
       }
-      const p = gradePtsNow(g);
-      const firstOff = sc.querySelector("li.off");
-      if (p > 0 && firstOff) {
-        const top = Math.max(0, firstOff.offsetTop - sc.clientHeight * 0.45);
-        sc.scrollTop = top;
-      }
+      bindDragScroll(sc, { blockWheel: true });
     });
+  }
+
+  function bindDragScroll(list, opts) {
+    if (!list || list.dataset.dragBound === "1") return;
+    list.dataset.dragBound = "1";
+    list.classList.add("drag-scroll");
+    const blockWheel = !!(opts && opts.blockWheel);
+    let dragging = false;
+    let moved = false;
+    let pointerId = null;
+    let startY = 0;
+    let startTop = 0;
+
+    if (blockWheel) {
+      // 휠/트랙패드는 페이지 스크롤만 — 목록은 클릭·터치 드래그로만 이동
+      list.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.scrollBy(0, e.deltaY);
+        },
+        { passive: false }
+      );
+    }
+
+    list.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest("input, textarea, select, option")) return;
+      if (list.scrollHeight <= list.clientHeight + 1) return;
+      dragging = true;
+      moved = false;
+      pointerId = e.pointerId;
+      startY = e.clientY;
+      startTop = list.scrollTop;
+      list.classList.add("dragging");
+      try {
+        list.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    list.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      const dy = e.clientY - startY;
+      if (Math.abs(dy) > 4) moved = true;
+      list.scrollTop = startTop - dy;
+      if (moved) e.preventDefault();
+    });
+
+    const endDrag = (e) => {
+      if (!dragging || (e && e.pointerId !== pointerId)) return;
+      dragging = false;
+      pointerId = null;
+      list.classList.remove("dragging");
+      if (moved) {
+        list.dataset.dragMoved = "1";
+        setTimeout(() => {
+          delete list.dataset.dragMoved;
+        }, 0);
+      }
+      moved = false;
+    };
+
+    list.addEventListener("pointerup", endDrag);
+    list.addEventListener("pointercancel", endDrag);
+    list.addEventListener("lostpointercapture", endDrag);
+    list.addEventListener(
+      "click",
+      (e) => {
+        if (list.dataset.dragMoved !== "1") return;
+        e.preventDefault();
+        e.stopPropagation();
+        delete list.dataset.dragMoved;
+      },
+      true
+    );
+  }
+
+  function wireDragScrollAreas(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll(".grade-fx-list").forEach((n) => bindDragScroll(n, { blockWheel: true }));
+    scope
+      .querySelectorAll(".own-body, .book-grid, .stat-guide-box, .fx ul, .cmp-overlay:not(#opt-loading)")
+      .forEach((n) => bindDragScroll(n));
+    if (root && root.classList) {
+      if (root.classList.contains("grade-fx-list")) bindDragScroll(root, { blockWheel: true });
+      if (
+        root.classList.contains("own-body") ||
+        root.classList.contains("book-grid") ||
+        root.classList.contains("stat-guide-box")
+      ) {
+        bindDragScroll(root);
+      }
+    }
   }
 
   function slotCell(def, card, index) {
@@ -1829,7 +2085,7 @@
     syncCurrentLevel();
     if (
       quiet &&
-      box.dataset.relic === state.relic &&
+      box.dataset.boardRelic === state.relic &&
       box.dataset.level === String(levelOf(state.relic)) &&
       box.querySelector(".cluster.rare-l")
     ) {
@@ -1844,6 +2100,9 @@
         const node = box.querySelector(sel);
         if (node) node.innerHTML = cluster(ids);
       }
+      box.querySelectorAll("[data-mode]").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.mode === state.mode);
+      });
       return;
     }
     const curLv = levelOf(state.relic);
@@ -1864,17 +2123,18 @@
         return `<button type="button" class="relic${on ? " on has-deck" : ""}${viewing ? " viewing" : ""}" data-relic="${r}" aria-pressed="${on ? "true" : "false"}" aria-current="${viewing ? "true" : "false"}" title="${viewing ? "현재 보고 있는 성물" : r + "의 성물"}">${r}의 성물</button>`;
       })
       .join("");
-    box.dataset.relic = state.relic;
+    box.dataset.boardRelic = state.relic;
     box.dataset.level = String(curLv);
     box.innerHTML = `
       <img class="board-bg" src="성물/${encodeURIComponent(state.relic)}-bg.jpg?v=70" alt="">
       <div class="board-veil" aria-hidden="true"></div>
+      <div class="board-sets">
+        <button type="button" class="set-btn${state.saved[0] ? " on" : ""}" id="set-a" data-set-slot="0" aria-pressed="${state.saved[0] ? "true" : "false"}">A SET 저장</button>
+        <button type="button" class="set-btn${state.saved[1] ? " on" : ""}" id="set-b" data-set-slot="1" aria-pressed="${state.saved[1] ? "true" : "false"}">B SET 저장</button>
+        <p class="board-set-note">※ A 와 B 전부 저장하면 비교창이 뜹니다</p>
+      </div>
+      <div class="board-modes">${modes}</div>
       <div class="board-ui">
-        <div class="board-sets">
-          <button type="button" class="set-btn${state.saved[0] ? " on" : ""}" id="set-a" data-set-slot="0" aria-pressed="${state.saved[0] ? "true" : "false"}">A SET 저장</button>
-          <button type="button" class="set-btn${state.saved[1] ? " on" : ""}" id="set-b" data-set-slot="1" aria-pressed="${state.saved[1] ? "true" : "false"}">B SET 저장</button>
-          <p class="board-set-note">※ A 와 B 전부 저장하면 비교창이 뜹니다</p>
-        </div>
         <div class="board-title">
           <small>${state.relic}의 성물</small>
           <div class="lv-step" role="group" aria-label="성물 레벨">
@@ -1885,7 +2145,6 @@
             <i class="lv-rule" aria-hidden="true"></i>
           </div>
         </div>
-        <div class="board-modes">${modes}</div>
         <div class="board-picks">
           <div class="board-pick-btns">${picks}</div>
           <p class="board-pick-note">※ 각 성물이 선택 된 상태에서 한번더 누르면 해당 성물의 모든 카드들이 일괄 해제 됩니다.</p>
@@ -1900,7 +2159,10 @@
         <div class="cluster hero-r">${cluster([11, 12, 13])}</div>
       </div>
       <p class="board-note">※ 카드를 누르면 등록하거나 제외할 수 있습니다.<br>※ 보유 카드는 상단 등급 버튼에서 선택하고, 그 카드들로 최적 덱을 찾습니다.</p>
-      <button type="button" class="ghost board-reset" data-reset-ex>제외시킨 카드 리셋</button>
+      <div class="board-actions">
+        <button type="button" class="ghost" data-stat-guide>추천 스탯 우선순위</button>
+        <button type="button" class="ghost board-deck-export" data-deck-export>📥 결속 목록 내려받기</button>
+      </div>
     `;
   }
 
@@ -2005,11 +2267,14 @@
 
   let optDotTimer = null;
   let drawSeq = 0;
+  let optLoadToken = 0;
 
   function showOptLoading() {
     const box = el("opt-loading");
     const dots = el("opt-loading-dots");
-    if (!box) return;
+    if (!box) return 0;
+    const token = ++optLoadToken;
+    box.dataset.token = String(token);
     box.classList.add("show");
     let n = 1;
     if (dots) dots.textContent = ".";
@@ -2018,15 +2283,19 @@
       n = (n % 3) + 1;
       if (dots) dots.textContent = ".".repeat(n);
     }, 380);
+    return token;
   }
 
-  function hideOptLoading() {
+  function hideOptLoading(token) {
+    const box = el("opt-loading");
+    if (!box) return;
+    if (token != null && Number(box.dataset.token || 0) !== token) return;
     if (optDotTimer) {
       clearInterval(optDotTimer);
       optDotTimer = null;
     }
-    const box = el("opt-loading");
-    if (box) box.classList.remove("show");
+    box.classList.remove("show");
+    delete box.dataset.token;
   }
 
   async function refreshRelicDecksAsync() {
@@ -2218,6 +2487,7 @@
         <div class="fx-wrap">${fxHtml}</div>
       </div>
     `;
+    wireDragScrollAreas(box);
   }
 
   function escapeHtml(s) {
@@ -2289,11 +2559,49 @@
         if (e.target === importDone) closeImportDone();
       });
     }
+    const deckExport = el("deck-export");
+    if (deckExport) {
+      el("deck-export-copy").addEventListener("click", () => copyDeckExport());
+      el("deck-export-download").addEventListener("click", () => downloadDeckExport());
+      el("deck-export-close").addEventListener("click", () => {
+        tapSetBtn(el("deck-export-close"));
+        closeDeckExport();
+      });
+      deckExport.addEventListener("click", (e) => {
+        if (e.target === deckExport) closeDeckExport();
+      });
+    }
+    const statGuide = el("stat-guide");
+    if (statGuide) {
+      el("stat-guide-custom").addEventListener("click", () => {
+        tapSetBtn(el("stat-guide-custom"));
+        openStatGuideSoon();
+      });
+      el("stat-guide-close").addEventListener("click", () => {
+        tapSetBtn(el("stat-guide-close"));
+        closeStatGuide();
+      });
+      statGuide.addEventListener("click", (e) => {
+        if (e.target === statGuide) closeStatGuide();
+      });
+    }
+    const statGuideSoon = el("stat-guide-soon");
+    if (statGuideSoon) {
+      el("stat-guide-soon-ok").addEventListener("click", () => {
+        tapSetBtn(el("stat-guide-soon-ok"));
+        closeStatGuideSoon();
+      });
+      statGuideSoon.addEventListener("click", (e) => {
+        if (e.target === statGuideSoon) closeStatGuideSoon();
+      });
+    }
     el("relic-board").addEventListener("click", (e) => {
-      if (e.target.closest("[data-reset-ex]")) {
-        state.excluded.clear();
-        markDirtyFrom(null);
-        draw();
+      if (e.target.closest("[data-stat-guide]")) {
+        openStatGuide();
+        return;
+      }
+      if (e.target.closest("[data-deck-export]")) {
+        openDeckExport();
         return;
       }
       if (e.target.closest("[data-set-slot]")) {
@@ -2312,7 +2620,19 @@
         draw();
         return;
       }
-      const relic = e.target.closest("[data-relic]");
+      const mode = e.target.closest(".board-modes [data-mode]");
+      if (mode) {
+        e.preventDefault();
+        e.stopPropagation();
+        const next = mode.dataset.mode;
+        if (next !== "PVE" && next !== "PVP") return;
+        if (state.mode === next) return;
+        state.mode = next;
+        markDirtyFrom(null);
+        draw();
+        return;
+      }
+      const relic = e.target.closest(".board-picks [data-relic]");
       if (relic) {
         if (e.detail > 1) return;
         const r = relic.dataset.relic;
@@ -2327,13 +2647,6 @@
           syncCurrentLevel();
           if (!wasOn) markDirtyFrom(r);
         }
-        draw();
-        return;
-      }
-      const mode = e.target.closest("[data-mode]");
-      if (mode) {
-        state.mode = mode.dataset.mode;
-        markDirtyFrom(null);
         draw();
         return;
       }
@@ -2432,6 +2745,18 @@
         closeImportPopup();
         return;
       }
+      if (el("stat-guide-soon") && el("stat-guide-soon").classList.contains("show")) {
+        closeStatGuideSoon();
+        return;
+      }
+      if (el("stat-guide") && el("stat-guide").classList.contains("show")) {
+        closeStatGuide();
+        return;
+      }
+      if (el("deck-export") && el("deck-export").classList.contains("show")) {
+        closeDeckExport();
+        return;
+      }
       if (el("save-notice") && el("save-notice").classList.contains("show")) {
         closeSaveNotice();
         return;
@@ -2450,35 +2775,44 @@
       }
       if (el("cmp-overlay").classList.contains("show")) closeCompare();
     });
+    wireDragScrollAreas();
   }
 
   async function draw(opts) {
     const quiet = !!(opts && opts.quiet);
-    const seq = ++drawSeq;
-    if (needsOptimizeWork()) {
-      if (quiet) {
-        // 제외/포함은 로딩 팝업·프레임 양보 없이 동기 갱신해 깜빡임을 줄임
-        const ev = refreshRelicDecks();
-        if (seq !== drawSeq) return;
-        renderResult(ev);
-      } else {
-        showOptLoading();
-        await yieldToUi();
-        if (seq !== drawSeq) return;
-        const ev = await refreshRelicDecksAsync();
-        if (seq !== drawSeq) return;
-        hideOptLoading();
-        renderResult(ev);
-      }
-    } else {
-      renderResult(refreshRelicDecks());
+    if (!quiet && quietDrawTimer) {
+      clearTimeout(quietDrawTimer);
+      quietDrawTimer = null;
     }
-    if (seq !== drawSeq) return;
-    renderControls(quiet ? { quiet: true } : null);
-    renderBoard(quiet ? { quiet: true } : null);
-    renderSaveBar();
-    restoreScroll();
-    scheduleSave();
+    const seq = ++drawSeq;
+    let loadToken = null;
+    try {
+      if (needsOptimizeWork()) {
+        if (quiet) {
+          // 제외/포함은 로딩 팝업·프레임 양보 없이 동기 갱신해 깜빡임을 줄임
+          const ev = refreshRelicDecks();
+          if (seq !== drawSeq) return;
+          renderResult(ev);
+        } else {
+          loadToken = showOptLoading();
+          await yieldToUi();
+          if (seq !== drawSeq) return;
+          const ev = await refreshRelicDecksAsync();
+          if (seq !== drawSeq) return;
+          renderResult(ev);
+        }
+      } else {
+        renderResult(refreshRelicDecks());
+      }
+      if (seq !== drawSeq) return;
+      renderControls(quiet ? { quiet: true } : null);
+      renderBoard(quiet ? { quiet: true } : null);
+      renderSaveBar();
+      restoreScroll();
+      scheduleSave();
+    } finally {
+      if (loadToken != null) hideOptLoading(loadToken);
+    }
   }
 
   window.BIND_APP = { state, optimize, slotBreakdown, selectedGrades, effectValue, setEnhanceAll, enhanceOf, setRelicLevel, slotsFromLevel, usedByRelicsBefore, refreshRelicDecks, markDirtyFrom, relicUsingCard };
