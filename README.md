@@ -4,7 +4,7 @@
 
 ## 도구
 
-- [결속 조합](결속/Index.html)
+- [결속 조합](결속/start.html) (영상 안내 → 도구)
 - [잠재력](잠재력/Index.html)
 - [가입절차](가입절차/Index.html)
 
