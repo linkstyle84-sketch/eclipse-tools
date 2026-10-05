@@ -1,0 +1,16 @@
+# dependencies / build tools
+**/node_modules/
+**/package-lock.json
+**/.package-lock.json
+
+# local preview / one-off scripts (keep source of truth in app files)
+**/.DS_Store
+**/Thumbs.db
+*.log
+
+# image processing scratch
+**/_crop-test/
+
+# editor
+.vscode/
+*.code-workspace

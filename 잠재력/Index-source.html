@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>이클립스 잠재력 시연</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0a08;
+      --ink: #f6edd6;
+      --muted: #cbb994;
+      --gold: #e4c36a;
+      --gold-deep: #9a6f18;
+      --card: #17130e;
+      --line: rgba(228, 195, 106, 0.28);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(1100px 480px at 50% -90px, #3a2410 0%, transparent 62%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans KR", sans-serif;
+    }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 18px 14px 72px; }
+    header { text-align: center; padding: 6px 4px 2px; }
+    .banner-row {
+      display: grid;
+      grid-template-columns: 1fr 27%;
+      align-items: stretch;
+      width: 100%;
+      margin: 12px 0 12px;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0a1220;
+    }
+    .banner-row img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      object-position: center center;
+    }
+    .member-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 10px;
+      text-decoration: none;
+      text-align: center;
+      color: #f6ebd4;
+      background: linear-gradient(#6b3f24, #3d2416);
+      border-left: 2px solid #2a160e;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .member-cta:hover { filter: brightness(1.08); }
+    .member-cta strong { font-size: clamp(13px, 2.2vw, 18px); }
+    .member-cta span { font-size: clamp(11px, 1.7vw, 14px); color: #f0d2a8; }
+    h1 {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      color: #fffdf6;
+      background: #100c08;
+      border: 3px solid #f3d56a;
+      border-radius: 16px;
+      box-shadow: 0 8px 0 #6a4a0e, 0 14px 28px rgba(0,0,0,.4);
+      text-align: left;
+    }
+    .title-art { display: block; width: 100%; height: auto; }
+    .game-by { display: block; padding: 8px 16px 10px; color: #ffe9a6; font-size: clamp(12px, 2.8vw, 14px); font-weight: 800; }
+    .lead { margin: 12px 2px 0; color: var(--muted); font-size: 14px; line-height: 1.6; text-align: left; }
+    .tabs { display: flex; gap: 8px; margin: 16px 0 14px; }
+    .tab {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--muted);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tab.on { color: #fffdf6; border-color: #f3d56a; background: #1c160e; }
+    .panel { display: none; }
+    .panel.on { display: block; }
+    .setup { margin-top: 2px; }
+    .setup-title {
+      margin: 0 0 8px;
+      color: var(--gold);
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .chips + .chips { margin-top: -2px; }
+    .area-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+      align-items: stretch;
+    }
+    .area-col {
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+      background: #121214;
+      aspect-ratio: 440 / 556;
+    }
+    .area-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      pointer-events: none;
+      user-select: none;
+    }
+    .area-slots {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+    }
+    .slot {
+      display: grid;
+      grid-template-columns: 15.6% minmax(0, 1fr);
+      align-items: center;
+      padding: 0.5% 1.2% 0.5% 3.6%;
+      column-gap: 5.6%;
+    }
+    .slot-icon-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      overflow: hidden;
+      justify-self: center;
+      background: #0a0a0a;
+    }
+    .slot-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .slot-body {
+      min-width: 0;
+      margin: 3% 0;
+      padding: 2px 8px 3px 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      background: #1c1c1e;
+      border-radius: 3px;
+    }
+    .slot:focus-within .slot-body {
+      box-shadow: inset 0 0 0 1px rgba(243, 213, 106, 0.75);
+    }
+    .slot-name {
+      font-size: clamp(12px, 1.15vw, 15px);
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .slot-name .lv {
+      margin-left: 6px;
+      color: #cfc6b4;
+      font-weight: 700;
+      font-size: 0.92em;
+    }
+    .slot select {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: #d8d2c6;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-radius: 0;
+      padding: 0;
+      font-size: clamp(11px, 1.05vw, 13px);
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+    .slot select:focus { outline: none; }
+    .slot select option { background: #1c1c1e; color: #f6edd6; }
+    .chip, .grade {
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .chip.on { border-color: #f3d56a; color: #fffdf6; background: #2a1d0c; }
+    .build-open {
+      border: 1px solid #7dcf7a;
+      background: rgba(125, 207, 122, 0.14);
+      color: #b6f0b3;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .build-open:hover { filter: brightness(1.08); }
+    .build-open.on { background: rgba(125, 207, 122, 0.28); color: #fff; }
+    .build-open.pvp {
+      border-color: #7ec8e3;
+      background: rgba(126, 200, 227, 0.14);
+      color: #b7e7f5;
+    }
+    .build-open.pvp.on { background: rgba(126, 200, 227, 0.28); color: #fff; }
+    .build-open.labup {
+      border-color: #f3d56a;
+      background: rgba(243, 213, 106, 0.14);
+      color: #ffe9a6;
+    }
+    .build-open.labup.on { background: rgba(243, 213, 106, 0.28); color: #fff; }
+    .build-open.pvp-rec {
+      border-color: #ff6b6b;
+      background: rgba(255, 107, 107, 0.14);
+      color: #ffb3b3;
+    }
+    .build-open.pvp-rec.on { background: rgba(255, 107, 107, 0.28); color: #fff; }
+    .build-open.save {
+      border-color: #e4c36a;
+      background: rgba(228, 195, 106, 0.16);
+      color: #ffe9a6;
+    }
+    .mine-box { margin: 4px 0 10px; }
+    .mine-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .mine-grades {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .mine-label {
+      color: var(--gold);
+      font-size: 15px;
+      font-weight: 800;
+      margin-right: 4px;
+    }
+    .mine-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 0;
+    }
+    .mine-slot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 6px 8px 6px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .mine-slot.on { border-color: #f3d56a; color: #fffdf6; background: #2a1d0c; }
+    .mine-del {
+      border: 0;
+      background: rgba(255,255,255,.08);
+      color: #cbb994;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 13px;
+      line-height: 20px;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .mine-del:hover { color: #fff; background: rgba(255,107,107,.35); }
+    .mine-msg {
+      margin: 4px 0 0;
+      color: #ffb3b3;
+      font-size: 12px;
+      font-weight: 700;
+      min-height: 0;
+    }
+    .mine-msg:empty { display: none; }
+    .build-name {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      color: #ffe9a6;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .build-name input,
+    .save-name input {
+      flex: 1;
+      min-width: 160px;
+      max-width: 240px;
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+    }
+    .save-card { width: min(360px, 100%); }
+    .modal-head h2.pvp { color: #9ad6ea; }
+    .build-note {
+      margin: 0 0 10px;
+      color: #d7c7a2;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.55;
+    }
+    .build-note:empty { display: none; }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.72);
+    }
+    .modal.on { display: flex; }
+    .modal-card {
+      width: min(640px, 100%);
+      max-height: min(88vh, 920px);
+      overflow: auto;
+      background: #14110d;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.55);
+      padding: 16px 16px 14px;
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .modal-head h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #b6f0b3;
+    }
+    .modal-head small { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .pve-area {
+      margin: 12px 0 6px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .pve-area.taecho { color: #f3d56a; background: rgba(228,195,106,.12); }
+    .pve-area.byunhwa { color: #9ad6ea; background: rgba(126,200,227,.12); }
+    .pve-area.sungchal { color: #d4b3f0; background: rgba(184,140,230,.12); }
+    .pve-src {
+      display: grid;
+      grid-template-columns: 42px 52px 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 8px 4px;
+      border-bottom: 1px solid rgba(228,195,106,.1);
+    }
+    .pve-src .slot-icon-wrap { width: 42px; }
+    .pve-src .name { font-size: 13px; font-weight: 800; color: #ffe9a6; padding-top: 8px; }
+    .pve-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pve-pick {
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      line-height: 1.35;
+    }
+    .pve-pick.on { border-color: #7dcf7a; color: #fffdf6; background: rgba(125,207,122,.16); }
+    .pve-pick .tier { color: #7dcf7a; margin-right: 4px; }
+    .modal-card.pvp .modal-head h2 { color: #9ad6ea; }
+    .modal-card.pvp .pve-pick.on { border-color: #7ec8e3; color: #fffdf6; background: rgba(126,200,227,.16); }
+    .modal-card.pvp .pve-pick .tier { color: #7ec8e3; }
+    .modal-card.pvp .btn-apply {
+      border-color: #7ec8e3;
+      background: rgba(126,200,227,.2);
+      color: #e6f7ff;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      position: sticky;
+      bottom: 0;
+      background: #14110d;
+      padding-top: 10px;
+    }
+    .modal-actions button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-reset {
+      border: 1px solid var(--line);
+      background: #120e0a;
+      color: var(--muted);
+    }
+    .btn-apply {
+      border: 1px solid #7dcf7a;
+      background: rgba(125,207,122,.2);
+      color: #e8ffe6;
+    }
+    .grade.g0 { color: #f2f2f2; border-color: rgba(242,242,242,.4); }
+    .grade.g1 { color: #7dcf7a; border-color: rgba(125,207,122,.45); }
+    .grade.g2 { color: #5aa8ff; border-color: rgba(90,168,255,.45); }
+    .grade.g3 { color: #ff6b6b; border-color: rgba(255,107,107,.45); }
+    .grade.g4 { color: #f3d56a; border-color: rgba(243,213,106,.5); }
+    .grade.g0.on { color: #fff; border-color: #fff; background: rgba(255,255,255,.14); }
+    .grade.g1.on { color: #b6f0b3; border-color: #7dcf7a; background: rgba(125,207,122,.16); }
+    .grade.g2.on { color: #b7d9ff; border-color: #5aa8ff; background: rgba(90,168,255,.16); }
+    .grade.g3.on { color: #ffb3b3; border-color: #ff6b6b; background: rgba(255,107,107,.16); }
+    .grade.g4.on { color: #ffe9a6; border-color: #f3d56a; background: rgba(243,213,106,.16); }
+    .src-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--line);
+    }
+    .src-icon.empty { display: block; }
+    .book { display: grid; gap: 12px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .card h3 {
+      margin: 0;
+      padding: 12px 14px;
+      background: #120e0a;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card h3 .src-icon { width: 44px; height: 44px; }
+    .card.taecho h3 { box-shadow: inset 4px 0 0 #e4c36a; }
+    .card.byunhwa h3 { box-shadow: inset 4px 0 0 #7ec8e3; }
+    .card.sungchal h3 { box-shadow: inset 4px 0 0 #c9a0e8; }
+    .book-area {
+      margin: 4px 0 8px;
+      color: var(--gold);
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .book-area.byunhwa { color: #9ad6ea; margin-top: 18px; }
+    .book-area.sungchal { color: #d4b3f0; margin-top: 18px; }
+    .card h3 small { color: var(--gold); font-size: 12px; margin-left: 8px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-top: 1px solid rgba(228,195,106,.12); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--gold); font-weight: 800; }
+    .g0 { color: #f2f2f2; } .g1 { color: #7dcf7a; } .g2 { color: #5aa8ff; }
+    .g3 { color: #ff6b6b; } .g4 { color: #f3d56a; }
+    footer { margin-top: 18px; color: #8a7d62; font-size: 12px; text-align: center; }
+    @media (max-width: 980px) {
+      .banner-row { grid-template-columns: 1fr; }
+      .banner-row img { width: 100%; height: auto; }
+      .member-cta { padding: 12px 10px; border-left: 0; border-top: 2px solid #2a160e; }
+      .area-board { grid-template-columns: 1fr; }
+      .area-col { max-width: 440px; width: 100%; margin: 0 auto; }
+      .mine-grades { margin-left: 0; width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>
+        <img src="eclipse-header.png" alt="이클립스 잠재력" class="title-art">
+      </h1>
+      <div class="banner-row">
+        <img src="banner.png" alt="도건유튜브">
+        <a class="member-cta" href="https://www.youtube.com/channel/UCk6f0jViRYWOi5BcHaDLZXQ/join" target="_blank" rel="noopener">
+          <strong>도건형 커피값 투척</strong>
+          <span>+멤버쉽가입 여기클릭</span>
+        </a>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="demo" type="button">시연</button>
+      <button class="tab" data-tab="book" type="button">근원 도감</button>
+    </div>
+
+    <section class="panel on" id="panel-demo">
+      <div class="setup">
+        <div class="setup-title" id="setupTitle"></div>
+        <div class="chips">
+          <button class="build-open labup" id="applyLabup" type="button">👍 도건추천 - PVE 빡랩업 셋팅</button>
+          <button class="build-open labup" id="applySustain" type="button">👍 도건추천 - PVE 유지력 셋팅</button>
+          <button class="build-open labup" id="applyWorker" type="button">👍 도건추천 - PVE 직장인 앵벌이 셋팅</button>
+        </div>
+        <div class="chips">
+          <button class="build-open pvp-rec" id="applyPvpMelee" type="button">👍 도건추천 - PVP 근거리 딜러</button>
+          <button class="build-open pvp-rec" id="applyPvpRanged" type="button">👍 도건추천 - PVP 원거리 딜러</button>
+          <button class="build-open pvp-rec" id="applyPvpMagic" type="button">👍 도건추천 - PVP 마법 딜러</button>
+          <button class="build-open pvp-rec" id="applyPvpMeleeTank" type="button">👍 도건추천 - PVP 근거리 탱커</button>
+        </div>
+        <div class="mine-box">
+          <div class="mine-bar">
+            <span class="mine-label">나만의 잠재력 셋팅</span>
+            <button class="build-open" id="openPve" type="button">PVE 셋팅</button>
+            <button class="build-open pvp" id="openPvp" type="button">PVP 셋팅</button>
+            <button class="build-open save" id="saveMine" type="button">셋팅 저장</button>
+            <div class="mine-grades" id="gradeChips"></div>
+          </div>
+          <div class="mine-slots" id="mineSlots"></div>
+          <div class="mine-msg" id="mineMsg"></div>
+        </div>
+      </div>
+      <div class="area-board" id="areaBoard">
+        <article class="area-col">
+          <img class="area-bg" src="바탕/태초.png" alt="태초">
+          <div class="area-slots" id="slots-taecho"></div>
+        </article>
+        <article class="area-col">
+          <img class="area-bg" src="바탕/변화.png" alt="변화">
+          <div class="area-slots" id="slots-byunhwa"></div>
+        </article>
+        <article class="area-col">
+          <img class="area-bg" src="바탕/성찰.png" alt="성찰">
+          <div class="area-slots" id="slots-sungchal"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-book"></section>
+    <footer>제작: 소장 도건 · 도건유튜브 · 게임연구소</footer>
+  </div>
+  <div class="modal" id="mineSaveModal">
+    <div class="modal-card save-card" role="dialog" aria-labelledby="mineSaveTitle">
+      <div class="modal-head">
+        <h2 id="mineSaveTitle">셋팅 저장</h2>
+      </div>
+      <label class="build-name save-name">나만의 잠재력 이름
+        <input id="mineSaveName" type="text" maxlength="8" placeholder="최대 8글자" autocomplete="off">
+      </label>
+      <div class="modal-actions">
+        <button class="btn-reset" id="mineSaveCancel" type="button">취소</button>
+        <button class="btn-apply" id="mineSaveApply" type="button">저장</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="buildModal">
+    <div class="modal-card" role="dialog" aria-labelledby="buildTitle">
+      <div class="modal-head">
+        <h2 id="buildTitle">PVE 셋팅 <small>고급 Lv.40 기준</small></h2>
+      </div>
+      <label class="build-name">나만의 잠재력 이름
+        <input id="buildName" type="text" maxlength="8" placeholder="최대 8글자" autocomplete="off">
+      </label>
+      <div class="build-note" id="buildNote"></div>
+      <div id="buildBody"></div>
+      <div class="modal-actions">
+        <button class="btn-reset" id="buildReset" type="button">초기화</button>
+        <button class="btn-apply" id="buildApply" type="button">적용</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const GRADES = [
+      { name: "일반", lv: 20 },
+      { name: "고급", lv: 40 },
+      { name: "희귀", lv: 60 },
+      { name: "영웅", lv: 80 },
+      { name: "전설", lv: 100 }
+    ];
+    const v = (a,b,c,d,e) => [a,b,c,d,e];
+    const SOURCES = [
+      { id: "본능", area: "태초", icon: "근원/본능.png", options: [
+        { name: "근거리 명중", unit: "", values: v(20,60,120,200,300) },
+        { name: "원거리 명중", unit: "", values: v(20,60,120,200,300) },
+        { name: "마법 명중", unit: "", values: v(20,60,120,200,300) },
+        { name: "근거리 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "원거리 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "마법 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "PvE 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvE 공격력", unit: "", values: v(24,72,144,240,360) }
+      ]},
+      { id: "직감", area: "태초", icon: "근원/직감.png", options: [
+        { name: "근거리 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "원거리 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "마법 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "근거리 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "원거리 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "마법 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvE 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvE 방어력", unit: "", values: v(24,72,144,240,360) }
+      ]},
+      { id: "감각", area: "태초", icon: "근원/감각.png", options: [
+        { name: "근거리 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "원거리 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "마법 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "근거리 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "원거리 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "마법 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "PvE 치명타", unit: "", values: v(72,216,432,720,1080) },
+        { name: "PvE 관통", unit: "", values: v(28,86,172,288,432) }
+      ]},
+      { id: "격앙", area: "태초", icon: "근원/격앙.png", options: [
+        { name: "근거리 피해 증폭", unit: "%", values: v(0.2,0.6,1.2,2,3) },
+        { name: "원거리 피해 증폭", unit: "%", values: v(0.2,0.6,1.2,2,3) },
+        { name: "마법 피해 증폭", unit: "%", values: v(0.2,0.6,1.2,2,3) },
+        { name: "근거리 피해 감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "원거리 피해 감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "마법 피해 감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "PvE 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "공격 속도", unit: "%", values: v(1,3,6,10,15) }
+      ]},
+      { id: "충동", area: "태초", icon: "근원/충동.png", options: [
+        { name: "근거리 피해 감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "원거리 피해 감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "마법 피해 감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "근거리 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "원거리 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "마법 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "PvE 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "시전 속도", unit: "%", values: v(2,6,12,20,30) }
+      ]},
+      { id: "기세", area: "태초", icon: "근원/기세.png", options: [
+        { name: "최대 HP", unit: "", values: v(500,1500,3000,5000,7499) },
+        { name: "최대 MP", unit: "", values: v(1600,4800,9600,16000,24000) },
+        { name: "HP 회복", unit: "", values: v(20,40,60,80,100) },
+        { name: "MP 회복", unit: "", values: v(20,40,60,80,100) },
+        { name: "물약 회복률", unit: "%", values: v(0.1,0.3,0.6,1,1.5) },
+        { name: "물약 최대 소지량", unit: "", values: v(20,40,60,80,100) },
+        { name: "경험치 획득량 증가", unit: "%", values: v(0.33,1,2,3.33,5) },
+        { name: "골드 획득량 증가", unit: "%", values: v(1,3,6,10,15) }
+      ]},
+      { id: "적응", area: "변화", icon: "근원/적응.png", options: [
+        { name: "일반공격 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "스킬 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "일반공격 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "스킬 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 치명타", unit: "", values: v(72,216,432,720,1080) },
+        { name: "PvP 관통", unit: "", values: v(28,86,172,288,432) }
+      ]},
+      { id: "유연", area: "변화", icon: "근원/유연.png", options: [
+        { name: "일반공격력", unit: "", values: v(24,72,144,240,360) },
+        { name: "스킬공격력", unit: "", values: v(24,72,144,240,360) },
+        { name: "일반 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "스킬 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvP 공격력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvP 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvP 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "PvP 관통 저항", unit: "", values: v(28,86,172,288,432) }
+      ]},
+      { id: "수용", area: "변화", icon: "근원/수용.png", options: [
+        { name: "근거리 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "원거리 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "마법 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "근거리 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "원거리 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "마법 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "상태이상 적중", unit: "%", values: v(1,3,6,10,15) },
+        { name: "상태이상 저항", unit: "%", values: v(1,3,6,10,15) }
+      ]},
+      { id: "변주", area: "변화", icon: "근원/변주.png", options: [
+        { name: "일반공격 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "스킬 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "일반공격 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "스킬 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "PvP 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "PvP 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "경험치 획득량 증가", unit: "%", values: v(0.33,1,2,3.33,5) },
+        { name: "골드 획득량 증가", unit: "%", values: v(1,3,6,10,15) }
+      ]},
+      { id: "전조", area: "변화", icon: "근원/전조.png", options: [
+        { name: "일반공격 피해감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "스킬 피해감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "일반공격 피해감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "스킬 피해감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "PvE 피해감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "PvE 피해감소 무시", unit: "", values: v(20,40,60,80,120) },
+        { name: "PvP 피해감소", unit: "", values: v(20,40,60,80,100) },
+        { name: "PvP 피해감소 무시", unit: "", values: v(20,40,60,80,120) }
+      ]},
+      { id: "균형", area: "변화", icon: "근원/균형.png", options: [
+        { name: "근거리 치명타 피해", unit: "%", values: v(1,3,6,10,15) },
+        { name: "원거리 치명타 피해", unit: "%", values: v(1,3,6,10,15) },
+        { name: "마법 치명타 피해", unit: "%", values: v(1,3,6,10,15) },
+        { name: "치명타 피해 감소", unit: "%", values: v(1,3,6,10,15) },
+        { name: "최대 HP", unit: "", values: v(500,1500,3000,5000,7499) },
+        { name: "최대 MP", unit: "", values: v(1600,4800,9600,16000,24000) },
+        { name: "물약 최대 소지량", unit: "", values: v(20,40,60,80,100) },
+        { name: "MP 회복", unit: "", values: v(20,40,60,80,100) }
+      ]},
+      { id: "판단", area: "성찰", icon: "근원/판단.png", options: [
+        { name: "일반공격 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "스킬 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "일반공격 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "스킬 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 명중", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 회피", unit: "", values: v(40,120,240,400,600) },
+        { name: "PvP 치명타", unit: "", values: v(72,216,432,720,1080) },
+        { name: "PvP 관통", unit: "", values: v(28,86,172,288,432) }
+      ]},
+      { id: "관조", area: "성찰", icon: "근원/관조.png", options: [
+        { name: "근거리 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "원거리 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "마법 공격력", unit: "", values: v(20,40,72,120,180) },
+        { name: "근거리 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "원거리 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "마법 방어력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvE 공격력", unit: "", values: v(24,72,144,240,360) },
+        { name: "PvE 방어력", unit: "", values: v(24,72,144,240,360) }
+      ]},
+      { id: "숙고", area: "성찰", icon: "근원/숙고.png", options: [
+        { name: "근거리 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "원거리 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "마법 치명타", unit: "", values: v(36,108,216,360,540) },
+        { name: "근거리 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "원거리 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "마법 관통", unit: "", values: v(20,43,86,144,216) },
+        { name: "PvE 치명타", unit: "", values: v(72,216,432,720,1080) },
+        { name: "PvE 관통", unit: "", values: v(28,86,172,288,432) }
+      ]},
+      { id: "절제", area: "성찰", icon: "근원/절제.png", options: [
+        { name: "근거리 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "원거리 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "마법 치명타 저항", unit: "", values: v(72,216,432,720,1080) },
+        { name: "근거리 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "원거리 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "마법 관통 저항", unit: "", values: v(28,86,172,288,432) },
+        { name: "공격 속도", unit: "%", values: v(1,3,6,10,15) },
+        { name: "시전 속도", unit: "%", values: v(2,6,12,20,30) }
+      ]},
+      { id: "분별", area: "성찰", icon: "근원/분별.png", options: [
+        { name: "일반공격 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "스킬 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "일반공격 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "스킬 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "PvP 피해 증폭", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "PvP 피해 증폭 저항", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "경험치 획득량 증가", unit: "%", values: v(0.33,1,2,3.33,5) },
+        { name: "골드 획득량 증가", unit: "%", values: v(1,3,6,10,15) }
+      ]},
+      { id: "직시", area: "성찰", icon: "근원/직시.png", options: [
+        { name: "이동 속도", unit: "%", values: v(0.3,0.9,1.8,3,4.5) },
+        { name: "물약 최대 소지량", unit: "", values: v(20,40,60,80,100) },
+        { name: "MP 소모량 감소", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "스킬 쿨타임 감소", unit: "%", values: v(0.4,1.2,2.4,4,6) },
+        { name: "경험치 획득량 증가", unit: "%", values: v(0.33,1,2,3.33,5) },
+        { name: "골드 획득량 증가", unit: "%", values: v(1,3,6,10,15) },
+        { name: "상태이상 적중", unit: "%", values: v(1,3,6,10,15) },
+        { name: "상태이상 저항", unit: "%", values: v(1,3,6,10,15) }
+      ]}
+    ];
+    const PRESET_MAP = {
+      pveLabup: { 본능:"PvE 명중", 직감:"PvE 회피", 감각:"PvE 치명타", 격앙:"공격 속도", 충동:"PvE 피해 증폭 저항", 기세:"경험치 획득량 증가", 적응:"일반공격 명중", 유연:"일반공격력", 수용:"원거리 관통 저항", 변주:"경험치 획득량 증가", 전조:"PvE 피해감소", 균형:"근거리 치명타 피해", 판단:"일반공격 명중", 관조:"PvE 공격력", 숙고:"PvE 치명타", 절제:"공격 속도", 분별:"경험치 획득량 증가", 직시:"경험치 획득량 증가" },
+      pveSustain: { 본능:"PvE 명중", 직감:"PvE 회피", 감각:"PvE 치명타", 격앙:"공격 속도", 충동:"PvE 피해 증폭 저항", 기세:"경험치 획득량 증가", 적응:"일반공격 회피", 유연:"일반 방어력", 수용:"원거리 관통 저항", 변주:"경험치 획득량 증가", 전조:"PvE 피해감소", 균형:"근거리 치명타 피해", 판단:"일반공격 회피", 관조:"PvE 방어력", 숙고:"PvE 치명타", 절제:"공격 속도", 분별:"경험치 획득량 증가", 직시:"경험치 획득량 증가" },
+      pveWorker: { 본능:"PvE 공격력", 직감:"PvE 회피", 감각:"PvE 치명타", 격앙:"공격 속도", 충동:"PvE 피해 증폭 저항", 기세:"골드 획득량 증가", 적응:"일반공격 회피", 유연:"일반 방어력", 수용:"원거리 관통 저항", 변주:"일반공격 피해 증폭 저항", 전조:"PvE 피해감소", 균형:"근거리 치명타 피해", 판단:"일반공격 회피", 관조:"PvE 방어력", 숙고:"PvE 치명타", 절제:"공격 속도", 분별:"일반공격 피해 증폭 저항", 직시:"골드 획득량 증가" },
+      pvpMelee: { 본능:"근거리 명중", 직감:"마법 방어력", 감각:"근거리 치명타", 격앙:"공격 속도", 충동:"원거리 피해 감소", 기세:"최대 HP", 적응:"PvP 치명타", 유연:"PvP 공격력", 수용:"상태이상 적중", 변주:"PvP 피해 증폭", 전조:"PvP 피해감소 무시", 균형:"근거리 치명타 피해", 판단:"PvP 치명타", 관조:"근거리 공격력", 숙고:"근거리 치명타", 절제:"공격 속도", 분별:"PvP 피해 증폭", 직시:"상태이상 적중" },
+      pvpRanged: { 본능:"원거리 명중", 직감:"마법 방어력", 감각:"원거리 치명타", 격앙:"공격 속도", 충동:"원거리 피해 감소", 기세:"최대 HP", 적응:"PvP 치명타", 유연:"PvP 공격력", 수용:"상태이상 적중", 변주:"PvP 피해 증폭", 전조:"PvP 피해감소 무시", 균형:"원거리 치명타 피해", 판단:"PvP 치명타", 관조:"원거리 공격력", 숙고:"원거리 치명타", 절제:"공격 속도", 분별:"PvP 피해 증폭", 직시:"상태이상 적중" },
+      pvpMagic: { 본능:"마법 명중", 직감:"마법 방어력", 감각:"마법 치명타", 격앙:"공격 속도", 충동:"원거리 피해 감소", 기세:"최대 HP", 적응:"PvP 치명타", 유연:"PvP 공격력", 수용:"상태이상 적중", 변주:"PvP 피해 증폭", 전조:"PvP 피해감소 무시", 균형:"마법 치명타 피해", 판단:"PvP 치명타", 관조:"마법 공격력", 숙고:"마법 치명타", 절제:"공격 속도", 분별:"PvP 피해 증폭", 직시:"상태이상 적중" },
+      pvpMeleeTank: { 본능:"근거리 명중", 직감:"마법 방어력", 감각:"근거리 치명타", 격앙:"공격 속도", 충동:"원거리 피해 감소", 기세:"최대 HP", 적응:"PvP 명중", 유연:"PvP 방어력", 수용:"상태이상 적중", 변주:"PvP 피해 증폭 저항", 전조:"PvP 피해감소", 균형:"최대 HP", 판단:"PvP 명중", 관조:"근거리 공격력", 숙고:"근거리 치명타", 절제:"공격 속도", 분별:"PvP 피해 증폭 저항", 직시:"상태이상 적중" }
+    };
+
+    const BUILD_GRADE = 1;
+    const BUILD_META = {
+      pve: { title: "PVE 셋팅", note: "" },
+      pvp: {
+        title: "PVP 셋팅",
+        note: "※ 치명타를 선택하실 때에는 모든 구간에 있는 치명타를 다 끌어 와야 시너지가 납니다.<br>※ 관통을 선택하실 때에는 모든 구간에 있는 관통을 다 끌어 와야 시너지가 납니다."
+      }
+    };
+    const BUILD_CHOICES = {
+      pve: {
+        본능: [["1티어","PvE 명중"],["2티어","PvE 공격력"]],
+        직감: [["1티어","PvE 회피"],["2티어","PvE 방어력"]],
+        감각: [["1티어","PvE 관통"],["2티어","PvE 치명타"]],
+        격앙: [["1티어","PvE 피해 증폭"],["2티어","공격 속도"]],
+        충동: [["1티어","시전 속도"],["2티어","원거리 피해 감소"],["2티어","마법 피해 감소"],["3티어","PvE 피해 증폭 저항"]],
+        기세: [["1티어","경험치 획득량 증가"]],
+        적응: [["1티어","일반공격 명중"],["2티어","일반공격 회피"]],
+        유연: [["1티어","일반공격력"],["2티어","일반 방어력"]],
+        수용: [["1티어","원거리 관통 저항"],["1티어","마법 관통 저항"]],
+        변주: [["1티어","경험치 획득량 증가"]],
+        전조: [["1티어","PvE 피해감소 무시"],["2티어","일반공격 피해감소 무시"],["3티어","PvE 피해감소"],["4티어","일반공격 피해감소"]],
+        균형: [["1티어","근거리 치명타 피해"],["1티어","원거리 치명타 피해"],["1티어","마법 치명타 피해"]],
+        판단: [["1티어","일반공격 명중"],["2티어","일반공격 회피"]],
+        관조: [["1티어","PvE 공격력"],["1티어","PvE 방어력"]],
+        숙고: [["1티어","PvE 관통"],["2티어","PvE 치명타"]],
+        절제: [["1티어","공격 속도"],["2티어","시전 속도"]],
+        분별: [["1티어","경험치 획득량 증가"]],
+        직시: [["1티어","경험치 획득량 증가"]]
+      },
+      pvp: {
+        본능: [["1티어","근거리 명중"],["1티어","원거리 명중"],["1티어","마법 명중"],["2티어","근거리 공격력"],["2티어","원거리 공격력"],["2티어","마법 공격력"]],
+        직감: [["1티어","원거리 방어력"],["2티어","원거리 회피"],["1티어","마법 방어력"],["2티어","마법 회피"]],
+        감각: [["1티어","근거리 관통"],["1티어","원거리 관통"],["1티어","마법 관통"],["1티어","근거리 치명타"],["1티어","원거리 치명타"],["1티어","마법 치명타"]],
+        격앙: [["1티어","공격 속도"],["2티어","근거리 피해 증폭"],["2티어","원거리 피해 증폭"],["2티어","마법 피해 증폭"]],
+        충동: [["1티어","시전 속도"],["2티어","원거리 피해 감소"],["2티어","마법 피해 감소"],["3티어","근거리 피해 감소"]],
+        기세: [["1티어","최대 HP"],["2티어","물약 회복률"]],
+        적응: [["1티어","PvP 명중"],["2티어","스킬 명중"],["3티어","PvP 관통"],["3티어","PvP 치명타"]],
+        유연: [["딜러","PvP 공격력"],["탱커 1티어","PvP 방어력"],["탱커 2티어","PvP 관통 저항"],["탱커 2티어","PvP 치명타 저항"]],
+        수용: [["1티어","상태이상 적중"],["2티어","상태이상 저항"]],
+        변주: [["딜러","PvP 피해 증폭"],["탱커","PvP 피해 증폭 저항"]],
+        전조: [["딜러","PvP 피해감소 무시"],["탱커","PvP 피해감소"]],
+        균형: [["딜러","근거리 치명타 피해"],["딜러","원거리 치명타 피해"],["딜러","마법 치명타 피해"],["탱커","최대 HP"]],
+        판단: [["1티어","PvP 명중"],["2티어","스킬 명중"],["3티어","PvP 관통"],["4티어","PvP 치명타"]],
+        관조: [["1티어","근거리 공격력"],["1티어","원거리 공격력"],["1티어","마법 공격력"]],
+        숙고: [["1티어","근거리 관통"],["1티어","원거리 관통"],["1티어","마법 관통"],["1티어","근거리 치명타"],["1티어","원거리 치명타"],["1티어","마법 치명타"]],
+        절제: [["1티어","공격 속도"],["2티어","시전 속도"]],
+        분별: [["딜러","PvP 피해 증폭"],["탱커","PvP 피해 증폭 저항"]],
+        직시: [["1티어","상태이상 적중"],["2티어","상태이상 저항"]]
+      }
+    };
+    let buildKind = "pve";
+    let buildDraft = {};
+    const AREA_SLOTS = {
+      태초: "slots-taecho",
+      변화: "slots-byunhwa",
+      성찰: "slots-sungchal"
+    };
+    const state = { grade: 1, preset: "pveLabup", picks: { ...PRESET_MAP.pveLabup } };
+    const MINE_KEY = "eclipse-mine-settings";
+    const MINE_MAX = 3;
+    function clipName(s) {
+      return String(s || "").replace(/\s+/g, " ").trim().slice(0, 8);
+    }
+    function loadMine() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(MINE_KEY) || "[]");
+        if (!Array.isArray(raw)) return [];
+        return raw.slice(0, MINE_MAX).filter((item) => item && item.id && item.name && item.picks).map((item) => ({
+          id: String(item.id),
+          name: clipName(item.name),
+          picks: { ...item.picks }
+        })).filter((item) => item.name);
+      } catch (e) {
+        return [];
+      }
+    }
+    function persistMine() {
+      localStorage.setItem(MINE_KEY, JSON.stringify(mineSlots));
+    }
+    let mineSlots = loadMine();
+    function currentMine() {
+      if (!String(state.preset).startsWith("mine:")) return null;
+      const id = state.preset.slice(5);
+      return mineSlots.find((item) => item.id === id) || null;
+    }
+    function setMineMsg(text) {
+      document.getElementById("mineMsg").textContent = text || "";
+    }
+    function saveMineSetting(name) {
+      const n = clipName(name);
+      if (!n) return null;
+      const picks = { ...state.picks };
+      const exist = mineSlots.find((item) => item.name === n);
+      if (exist) {
+        exist.picks = picks;
+        persistMine();
+        setMineMsg("");
+        return exist;
+      }
+      if (mineSlots.length >= MINE_MAX) {
+        setMineMsg("최대 3개까지 저장할 수 있습니다. 기존 셋팅을 지운 뒤 다시 저장해 주세요.");
+        return null;
+      }
+      const item = { id: String(Date.now()), name: n, picks };
+      mineSlots.push(item);
+      persistMine();
+      setMineMsg("");
+      return item;
+    }
+    function renderMineSlots() {
+      document.getElementById("mineSlots").innerHTML = mineSlots.map((item) => {
+        const on = state.preset === "mine:" + item.id ? " on" : "";
+        return `<button class="mine-slot${on}" type="button" data-mine-id="${item.id}"><span>${item.name}</span><span class="mine-del" data-mine-del="${item.id}" aria-label="삭제">×</span></button>`;
+      }).join("");
+    }
+    function applyMine(id) {
+      const item = mineSlots.find((m) => m.id === id);
+      if (!item) return;
+      state.preset = "mine:" + item.id;
+      state.picks = { ...item.picks };
+      setMineMsg("");
+      render();
+    }
+    function deleteMine(id) {
+      mineSlots = mineSlots.filter((item) => item.id !== id);
+      persistMine();
+      if (state.preset === "mine:" + id) state.preset = "";
+      setMineMsg("");
+      render();
+    }
+    function openMineSaveModal() {
+      const cur = currentMine();
+      document.getElementById("mineSaveName").value = cur ? cur.name : clipName(document.getElementById("buildName").value);
+      document.getElementById("mineSaveModal").classList.add("on");
+      setTimeout(() => document.getElementById("mineSaveName").focus(), 0);
+    }
+    function closeMineSaveModal() {
+      document.getElementById("mineSaveModal").classList.remove("on");
+    }
+
+    function sourceById(id) { return SOURCES.find((s) => s.id === id); }
+    function areaKind(area) {
+      if (area === "태초") return "taecho";
+      if (area === "변화") return "byunhwa";
+      return "sungchal";
+    }
+    function iconHtml(src) {
+      return src.icon
+        ? `<img class="src-icon" src="${src.icon}" alt="${src.id}">`
+        : `<span class="src-icon empty"></span>`;
+    }
+    function optionOf(srcId, name) {
+      return sourceById(srcId).options.find((o) => o.name === name);
+    }
+    function fmt(opt, grade) {
+      if (!opt) return "—";
+      const n = opt.values[grade];
+      if (opt.unit === "%") return (Number.isInteger(n) ? n : n) + "%";
+      return n.toLocaleString("ko-KR");
+    }
+    function rNum(n) { return Number.isInteger(n) ? n : String(n); }
+    function applyPreset(id) {
+      state.preset = id;
+      state.picks = { ...PRESET_MAP[id] };
+      render();
+    }
+    function renderSlots(area) {
+      const lv = GRADES[state.grade].lv;
+      const html = SOURCES.filter((src) => src.area === area).map((src) => {
+        const opts = ['<option value="">비움</option>'].concat(
+          src.options.map((o) => `<option value="${o.name}" ${state.picks[src.id] === o.name ? "selected" : ""}>${o.name} ${fmt(o, state.grade)}</option>`)
+        ).join("");
+        return `<div class="slot"><div class="slot-icon-wrap">${iconHtml(src).replace('class="src-icon"', 'class="slot-icon"')}</div><div class="slot-body"><div class="slot-name g${state.grade}">${src.id}<span class="lv">Lv.${lv}</span></div><select data-src="${src.id}">${opts}</select></div></div>`;
+      }).join("");
+      document.getElementById(AREA_SLOTS[area]).innerHTML = html;
+    }
+    function renderBook() {
+      const card = (src) => {
+        const head = `<tr><th>옵션</th>${GRADES.map((g,i) => `<th class="g${i}">${g.name}</th>`).join("")}</tr>`;
+        const body = src.options.map((o) => `<tr><td>${o.name}</td>${o.values.map((n,i) => `<td class="g${i}">${o.unit === "%" ? rNum(n) + "%" : n.toLocaleString("ko-KR")}</td>`).join("")}</tr>`).join("");
+        return `<article class="card ${areaKind(src.area)}"><h3>${iconHtml(src)}<span>${src.id}<small>${src.area} · 옵션 8종</small></span></h3><div class="table-wrap"><table>${head}${body}</table></div></article>`;
+      };
+      document.getElementById("panel-book").innerHTML = '<div class="book">' +
+        '<div class="book-area taecho">태초</div>' +
+        SOURCES.filter((src) => src.area === "태초").map(card).join("") +
+        '<div class="book-area byunhwa">변화</div>' +
+        SOURCES.filter((src) => src.area === "변화").map(card).join("") +
+        '<div class="book-area sungchal">성찰</div>' +
+        SOURCES.filter((src) => src.area === "성찰").map(card).join("") +
+        "</div>";
+    }
+    function render() {
+      const titles = {
+        pve: "PVE 셋팅",
+        pvpBuild: "PVP 셋팅",
+        pveLabup: "도건추천 - PVE 빡랩업 셋팅",
+        pveSustain: "도건추천 - PVE 유지력 셋팅",
+        pveWorker: "도건추천 - PVE 직장인 앵벌이 셋팅",
+        pvpMelee: "도건추천 - PVP 근거리 딜러",
+        pvpRanged: "도건추천 - PVP 원거리 딜러",
+        pvpMagic: "도건추천 - PVP 마법 딜러",
+        pvpMeleeTank: "도건추천 - PVP 근거리 탱커"
+      };
+      const mine = currentMine();
+      document.getElementById("setupTitle").innerHTML =
+        (mine ? mine.name : (titles[state.preset] || "직접 선택")) + " · <span class=\"g" + state.grade + "\">" + GRADES[state.grade].name + " Lv." + GRADES[state.grade].lv + "</span>";
+      document.getElementById("openPve").classList.toggle("on", state.preset === "pve");
+      document.getElementById("openPvp").classList.toggle("on", state.preset === "pvpBuild");
+      document.getElementById("applyLabup").classList.toggle("on", state.preset === "pveLabup");
+      document.getElementById("applySustain").classList.toggle("on", state.preset === "pveSustain");
+      document.getElementById("applyWorker").classList.toggle("on", state.preset === "pveWorker");
+      document.getElementById("applyPvpMelee").classList.toggle("on", state.preset === "pvpMelee");
+      document.getElementById("applyPvpRanged").classList.toggle("on", state.preset === "pvpRanged");
+      document.getElementById("applyPvpMagic").classList.toggle("on", state.preset === "pvpMagic");
+      document.getElementById("applyPvpMeleeTank").classList.toggle("on", state.preset === "pvpMeleeTank");
+      document.getElementById("gradeChips").innerHTML = GRADES.map((g, i) =>
+        `<button class="grade g${i} ${state.grade === i ? "on" : ""}" type="button" data-grade="${i}">${g.name}</button>`
+      ).join("");
+      renderMineSlots();
+      Object.keys(AREA_SLOTS).forEach(renderSlots);
+    }
+    document.querySelector(".tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t === btn));
+      document.getElementById("panel-demo").classList.toggle("on", btn.dataset.tab === "demo");
+      document.getElementById("panel-book").classList.toggle("on", btn.dataset.tab === "book");
+    });
+    function emptyBuildDraft() {
+      buildDraft = {};
+      Object.keys(BUILD_CHOICES[buildKind]).forEach((id) => { buildDraft[id] = ""; });
+    }
+    function fillBuildDraftFromState() {
+      emptyBuildDraft();
+      Object.keys(BUILD_CHOICES[buildKind]).forEach((id) => {
+        const cur = state.picks[id];
+        if (BUILD_CHOICES[buildKind][id].some((c) => c[1] === cur)) buildDraft[id] = cur;
+      });
+    }
+    function renderBuildModal() {
+      const meta = BUILD_META[buildKind];
+      const title = document.getElementById("buildTitle");
+      title.classList.toggle("pvp", buildKind === "pvp");
+      title.innerHTML = meta.title + " <small>고급 Lv.40 기준</small>";
+      document.getElementById("buildNote").innerHTML = meta.note;
+      document.querySelector("#buildModal .modal-card").classList.toggle("pvp", buildKind === "pvp");
+      const areas = ["태초", "변화", "성찰"];
+      document.getElementById("buildBody").innerHTML = areas.map((area) => {
+        const rows = SOURCES.filter((src) => src.area === area).map((src) => {
+          const picks = BUILD_CHOICES[buildKind][src.id].map((c) => {
+            const opt = optionOf(src.id, c[1]);
+            const on = buildDraft[src.id] === c[1] ? " on" : "";
+            return `<button class="pve-pick${on}" type="button" data-build-src="${src.id}" data-build-name="${c[1]}"><span class="tier">${c[0]}</span>${c[1]} ${fmt(opt, BUILD_GRADE)}</button>`;
+          }).join("");
+          return `<div class="pve-src"><div class="slot-icon-wrap">${iconHtml(src).replace('class="src-icon"', 'class="slot-icon"')}</div><div class="name">${src.id}</div><div class="pve-picks">${picks}</div></div>`;
+        }).join("");
+        return `<div class="pve-area ${areaKind(area)}">${area}</div>${rows}`;
+      }).join("");
+    }
+    function openBuildModal(kind) {
+      buildKind = kind;
+      fillBuildDraftFromState();
+      renderBuildModal();
+      const mine = currentMine();
+      document.getElementById("buildName").value = mine ? mine.name : "";
+      document.getElementById("buildModal").classList.add("on");
+    }
+    function closeBuildModal() {
+      document.getElementById("buildModal").classList.remove("on");
+    }
+    function applyBuildDraft() {
+      Object.keys(buildDraft).forEach((id) => {
+        if (buildDraft[id]) state.picks[id] = buildDraft[id];
+      });
+      state.preset = buildKind === "pvp" ? "pvpBuild" : "pve";
+      const saved = saveMineSetting(document.getElementById("buildName").value);
+      if (saved) state.preset = "mine:" + saved.id;
+      closeBuildModal();
+      render();
+    }
+    document.getElementById("panel-demo").addEventListener("click", (e) => {
+      if (e.target.closest("#openPve")) {
+        openBuildModal("pve");
+        return;
+      }
+      if (e.target.closest("#openPvp")) {
+        openBuildModal("pvp");
+        return;
+      }
+      if (e.target.closest("#applyLabup")) {
+        applyPreset("pveLabup");
+        return;
+      }
+      if (e.target.closest("#applySustain")) {
+        applyPreset("pveSustain");
+        return;
+      }
+      if (e.target.closest("#applyWorker")) {
+        applyPreset("pveWorker");
+        return;
+      }
+      if (e.target.closest("#applyPvpMelee")) {
+        applyPreset("pvpMelee");
+        return;
+      }
+      if (e.target.closest("#applyPvpRanged")) {
+        applyPreset("pvpRanged");
+        return;
+      }
+      if (e.target.closest("#applyPvpMagic")) {
+        applyPreset("pvpMagic");
+        return;
+      }
+      if (e.target.closest("#applyPvpMeleeTank")) {
+        applyPreset("pvpMeleeTank");
+        return;
+      }
+      if (e.target.closest("#saveMine")) {
+        openMineSaveModal();
+        return;
+      }
+      const del = e.target.closest("[data-mine-del]");
+      if (del) {
+        deleteMine(del.dataset.mineDel);
+        return;
+      }
+      const slot = e.target.closest("[data-mine-id]");
+      if (slot) {
+        applyMine(slot.dataset.mineId);
+        return;
+      }
+      const grade = e.target.closest("[data-grade]");
+      if (grade) {
+        state.grade = Number(grade.dataset.grade);
+        render();
+      }
+    });
+    document.getElementById("panel-demo").addEventListener("change", (e) => {
+      const sel = e.target.closest("select[data-src]");
+      if (!sel) return;
+      state.picks[sel.dataset.src] = sel.value;
+      state.preset = "";
+      render();
+    });
+    document.getElementById("buildModal").addEventListener("click", (e) => {
+      if (e.target.id === "buildModal") {
+        closeBuildModal();
+        return;
+      }
+      const pick = e.target.closest("[data-build-src]");
+      if (pick) {
+        const id = pick.dataset.buildSrc;
+        const name = pick.dataset.buildName;
+        buildDraft[id] = buildDraft[id] === name ? "" : name;
+        renderBuildModal();
+        return;
+      }
+      if (e.target.closest("#buildReset")) {
+        emptyBuildDraft();
+        renderBuildModal();
+        return;
+      }
+      if (e.target.closest("#buildApply")) applyBuildDraft();
+    });
+    document.getElementById("mineSaveModal").addEventListener("click", (e) => {
+      if (e.target.id === "mineSaveModal" || e.target.closest("#mineSaveCancel")) {
+        closeMineSaveModal();
+        return;
+      }
+      if (e.target.closest("#mineSaveApply")) {
+        const n = clipName(document.getElementById("mineSaveName").value);
+        if (!n) {
+          document.getElementById("mineSaveName").focus();
+          return;
+        }
+        const saved = saveMineSetting(n);
+        if (saved) {
+          state.preset = "mine:" + saved.id;
+          closeMineSaveModal();
+          render();
+        } else {
+          closeMineSaveModal();
+        }
+      }
+    });
+    document.getElementById("mineSaveName").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("mineSaveApply").click();
+      }
+    });
+    ["buildName", "mineSaveName"].forEach((id) => {
+      document.getElementById(id).addEventListener("blur", (e) => {
+        e.target.value = clipName(e.target.value);
+      });
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (document.getElementById("mineSaveModal").classList.contains("on")) {
+        closeMineSaveModal();
+        return;
+      }
+      closeBuildModal();
+    });
+    renderBook();
+    render();
+    if (location.hash === "#pve") openBuildModal("pve");
+    if (location.hash === "#pvp") openBuildModal("pvp");
+  </script>
+</body>
+</html>
