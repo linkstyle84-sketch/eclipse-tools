@@ -156,7 +156,7 @@
     <div class="actions">
       <a class="cta" id="open-tool" href="Index.html">
         결속 도구 사용하기
-        <small>클릭 시 유튜브 영상도 함께 열립니다</small>
+        <small>유튜브와 결속 도구가 각각 새 창으로 열립니다</small>
       </a>
       <a class="sub" href="https://www.youtube.com/watch?v=NP0PvJ8DLLY" target="_blank" rel="noopener">유튜브에서 영상만 보기</a>
     </div>
@@ -173,9 +173,8 @@
       var yt = "https://www.youtube.com/watch?v=NP0PvJ8DLLY";
       btn.addEventListener("click", function (e) {
         e.preventDefault();
-        var tool = btn.getAttribute("href");
-        window.open(yt, "_blank", "noopener");
-        location.href = tool;
+        window.open(yt, "_blank", "noopener,noreferrer");
+        window.open(btn.href, "_blank", "noopener,noreferrer");
       });
     })();
   </script>
