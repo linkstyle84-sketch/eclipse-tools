@@ -1102,8 +1102,13 @@
     }
     .book-grid.drag-scroll,
     .own-body.drag-scroll {
+      touch-action: pan-y;
+      cursor: auto;
+    }
+    .book-grid.drag-scroll.dragging,
+    .own-body.drag-scroll.dragging {
       touch-action: none;
-      cursor: grab;
+      cursor: grabbing;
     }
     .book-card {
       display: flex;
@@ -1121,6 +1126,10 @@
     }
     .book-card:hover:not(:disabled) { border-color: #f3d56a; }
     .book-card:disabled { cursor: default; }
+    .book-card img,
+    .book-card strong {
+      pointer-events: none;
+    }
     .book-card img {
       width: 64px;
       height: 64px;
@@ -1227,6 +1236,11 @@
       font-family: inherit;
     }
     .own-card:hover { border-color: #f3d56a; }
+    .own-card img,
+    .own-card strong,
+    .own-card .own-state {
+      pointer-events: none;
+    }
     .own-card img {
       width: 64px;
       height: 64px;
@@ -1819,7 +1833,7 @@
       <strong>결속 효과 최적화중</strong><span class="opt-loading-dots" id="opt-loading-dots">.</span>
     </div>
   </div>
-  <script src="data.js?v=143"></script>
-  <script src="app.js?v=143"></script>
+  <script src="data.js?v=145"></script>
+  <script src="app.js?v=145"></script>
 </body>
 </html>

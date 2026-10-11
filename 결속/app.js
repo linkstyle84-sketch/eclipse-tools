@@ -2002,11 +2002,12 @@
     list.dataset.dragBound = "1";
     list.classList.add("drag-scroll");
     const blockWheel = !!(opts && opts.blockWheel);
-    let dragging = false;
+    let tracking = false;
     let moved = false;
     let pointerId = null;
     let startY = 0;
     let startTop = 0;
+    let pressControl = null;
 
     if (blockWheel) {
       // 휠/트랙패드는 페이지 스크롤만 — 목록은 클릭·터치 드래그로만 이동
@@ -2022,52 +2023,77 @@
     }
 
     list.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.button !== 0) return;
       if (e.target.closest("input, textarea, select, option")) return;
-      if (list.scrollHeight <= list.clientHeight + 1) return;
-      dragging = true;
+      pressControl = e.target.closest("button, a");
+      if (pressControl && !list.contains(pressControl)) pressControl = null;
+      if (list.scrollHeight <= list.clientHeight + 1) {
+        tracking = false;
+        moved = false;
+        pointerId = null;
+        return;
+      }
+      tracking = true;
       moved = false;
       pointerId = e.pointerId;
       startY = e.clientY;
       startTop = list.scrollTop;
-      list.classList.add("dragging");
-      try {
-        list.setPointerCapture(e.pointerId);
-      } catch (_) {}
     });
 
     list.addEventListener("pointermove", (e) => {
-      if (!dragging || e.pointerId !== pointerId) return;
+      if (!tracking || e.pointerId !== pointerId) return;
       const dy = e.clientY - startY;
-      if (Math.abs(dy) > 4) moved = true;
+      if (!moved && Math.abs(dy) < 10) return;
+      if (!moved) {
+        moved = true;
+        list.classList.add("dragging");
+        try {
+          list.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      }
       list.scrollTop = startTop - dy;
-      if (moved) e.preventDefault();
+      e.preventDefault();
     });
 
     const endDrag = (e) => {
-      if (!dragging || (e && e.pointerId !== pointerId)) return;
-      dragging = false;
+      if (!tracking) return;
+      if (e && e.pointerId != null && e.pointerId !== pointerId && e.type !== "lostpointercapture") return;
+      tracking = false;
       pointerId = null;
       list.classList.remove("dragging");
       if (moved) {
         list.dataset.dragMoved = "1";
+        pressControl = null;
         setTimeout(() => {
           delete list.dataset.dragMoved;
-        }, 0);
+        }, 50);
       }
       moved = false;
     };
 
     list.addEventListener("pointerup", endDrag);
-    list.addEventListener("pointercancel", endDrag);
+    list.addEventListener("pointercancel", (e) => {
+      pressControl = null;
+      endDrag(e);
+    });
     list.addEventListener("lostpointercapture", endDrag);
     list.addEventListener(
       "click",
       (e) => {
-        if (list.dataset.dragMoved !== "1") return;
+        if (list.dataset.dragMoved === "1") {
+          e.preventDefault();
+          e.stopPropagation();
+          delete list.dataset.dragMoved;
+          pressControl = null;
+          return;
+        }
+        const control = pressControl;
+        pressControl = null;
+        if (!control || !list.contains(control)) return;
+        if (control === e.target || control.contains(e.target)) return;
         e.preventDefault();
         e.stopPropagation();
-        delete list.dataset.dragMoved;
+        control.click();
       },
       true
     );
@@ -2076,9 +2102,7 @@
   function wireDragScrollAreas(root) {
     const scope = root && root.querySelectorAll ? root : document;
     scope.querySelectorAll(".grade-fx-list").forEach((n) => bindDragScroll(n, { blockWheel: true }));
-    scope
-      .querySelectorAll(".own-body, .book-grid, .stat-guide-box, .fx ul, .cmp-overlay:not(#opt-loading)")
-      .forEach((n) => bindDragScroll(n));
+    scope.querySelectorAll(".own-body, .book-grid, .stat-guide-box, .fx ul").forEach((n) => bindDragScroll(n));
     if (root && root.classList) {
       if (root.classList.contains("grade-fx-list")) bindDragScroll(root, { blockWheel: true });
       if (
